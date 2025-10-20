@@ -1,0 +1,59 @@
+.contedorServicios{
+    
+    width: 100%;
+   
+
+    z-index: 5;
+    background-color: whitesmoke;
+    position: relative;
+    font-size: 30px;
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 30px;
+  
+}
+.subcontedorServicios{
+    justify-content: center;
+    flex-wrap: wrap;
+    display: flex;
+    padding-bottom: 30px;
+}
+
+h2{
+    text-align: center;
+
+
+}
+
+     
+.subtitulocont{ 
+    border-radius: 10px;
+    font-family: myriad-pro, sans-serif;
+font-size: 45px;
+    padding: 10px;
+}
+.botonClickserv{
+    font-size: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 1);
+   
+    border-left: 4px outset rgb(65, 143, 226);
+    border-bottom: 2px outset rgb(6, 67, 125);
+    box-shadow: -8px 10px 14px grey;
+    border-radius: 10px;
+    cursor:pointer;
+    transition: 0.5s;
+  
+}
+
+.botonClickserv:hover{
+   color:rgb(65, 143, 226);
+   margin-top: 10px;
+   
+}

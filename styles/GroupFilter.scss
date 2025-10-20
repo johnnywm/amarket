@@ -1,0 +1,155 @@
+.custom-checkbox {
+  display: block;
+  position: relative;
+  padding-left: 2rem;
+  cursor: pointer;
+  user-select: none;
+
+  &__input {
+    position: absolute;
+    opacity: 0;
+    height: 0;
+    width: 0;
+
+
+  }
+
+  &__span {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    height: 1.2rem;
+    width: 1.2rem;
+    background-color: white;
+    border: 2px solid gray;
+
+    &::after {
+      content: "";
+      opacity: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: .6rem;
+      height: .6rem;
+      background-color: dodgerblue;
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  &:hover &__span {
+    background-color: #eeeeee;
+  }
+
+  &__input:checked + &__span::after {
+    opacity: 1;
+  }
+}
+
+.flex-50 {
+  flex: 0 0 100%;
+}
+
+.item-cate-group{
+  list-style: none;
+    padding: 5px;
+  min-width: 100px;
+
+    display: flex;
+    flex-flow: row;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: -2px 2px 4px #0021ff;
+    border-radius: 15px;
+    height: auto;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+   
+ 
+}
+
+.contItemscate{
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  padding: 8px;
+}
+.contminimarca{
+  display: flex;
+  height: 70%;
+  justify-content: center;
+  align-items: center;
+}
+.customcard{
+  display: flex;
+    padding: 10px;
+    justify-content: space-between;
+}
+.removeFilter{
+  border: 1px solid red;
+    padding: 5px;
+    border-radius: 23px;
+    background: #db1212;
+    color: white;
+    font-size: 10px;
+    height: 27px;
+    border-bottom: 1px solid black;
+    cursor:pointer;
+}
+.customul{
+  display: flex;
+  justify-content: space-around;
+  padding-bottom: 10px;
+  padding-top: 10px;
+
+}
+.contminicateGroup{
+  height: 60px;
+
+
+    display: flex;
+    justify-content: center;
+}
+.contValueCate{
+  width: 100%;
+  max-width: 116px;
+}
+
+.contmarcadata{
+  height: 30%;
+  display: flex;
+  font-size: 13px;
+  width: 100%;
+  margin-top: 5px;
+
+}
+.MuiFormControlLabel-root {
+  margin-left: 0px!important;
+  margin-right: 0px!important;
+
+}
+.subtituloArtbtn{
+  border-radius: 12px;
+  width: 49px;
+  background: white;
+  border-bottom: 0.5px solid black;
+  display: flex;
+  justify-content: center;
+}
+label{
+  margin-bottom: 0px!important;
+}
+@media only screen and (max-width: 768px) {
+
+  .flex-50 {
+    flex: 0 0 50%;
+  }
+}
+@media only screen and (min-width: 1000px) {
+
+  .item-cate-group {
+    box-shadow: -2px 2px 4px #0021ff;
+    width: 100%;
+  }
+}

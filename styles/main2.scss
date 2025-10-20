@@ -1,0 +1,358 @@
+body{
+  margin: 0;
+  
+}
+
+$darkBack: #000000ef;
+
+$mywhite:white;
+$myred:#e6003a;
+
+
+
+
+::-webkit-scrollbar {
+  width: 8px;
+  height:8px;
+}
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey; 
+  border-radius: 10px;
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: rgb(65, 143, 226);
+  border-radius: 10px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(6, 67, 125);
+}
+.simpleEnf{
+  font-weight: bold;
+font-style: italic;
+}
+.vermasmenos{
+  font-weight: bold;
+  font-style: italic;
+  color:lightblue;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.enfasistext {
+  color: $myred;
+font-weight: bold;
+font-style: italic;
+display: flex;
+width: 100%;
+justify-content: center;
+margin-top: 12px;
+
+}
+
+.contFlex{
+
+  display: flex;
+  flex-wrap: wrap;
+  
+    justify-content: center;
+
+}
+.footerimage{
+  background: white;
+  background-position-x: -650px;
+  background-size: cover;
+  background-image: url("../public/footer/footerbg.png");
+}
+
+.justContFlex{
+  display: flex;
+}
+.jwContResponsive{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+.conttitulo{
+  height: 200px;
+  margin: 50px 0px;
+}
+.jwcontFlex{
+  
+  display: flex;
+  flex-wrap: wrap;
+  
+    justify-content: center;
+    p{
+      margin: 0px;
+    }
+}
+.subtituloFooter{
+  font-size: 25px;
+    font-weight: bolder;
+}
+.BotoneraLight{
+  svg {
+    font-size: 50px;
+    margin: 6px;
+  }
+}
+.jwfull{
+  width: 100%;
+}
+.jwFlexWrap{
+  flex-wrap: wrap;
+}
+.jwcolumna{
+  flex-flow: column;
+}
+
+.jwtextocentrado{
+  text-align: center;
+}
+
+.contClaveValor{
+  margin:  40px 20px;
+width: 100%;
+border: 2px inset white;
+
+padding: 15px;
+border-radius: 15px;
+
+display: flex;
+max-width: 280px;
+align-items: center;
+justify-content: space-around;
+
+}
+.contClaveValorAlt2{
+  
+
+  width: 100%;
+  display: flex;
+  max-width: 250px;
+  justify-content: space-around;
+  padding: 15px;
+  border-right: 2px outset #6363db;
+  margin: 45px 20px;
+
+
+}
+.conBotonflexend{
+  display: flex;
+  justify-content: flex-end;
+}
+.claveIco{
+  display: flex;
+  justify-content: center;
+
+  align-items: center;
+  width: 25%;
+  margin-right: 25px;
+}
+.claveIcoAlt2{
+  display: flex;
+  justify-content: center;
+
+  align-items: center;
+  width: 30%;
+  min-width: 120px;
+}
+.valorIcoAlt2{
+  display: flex;
+  align-items: center;
+    h2{
+      text-align: center;
+      font-size: 20px;
+    }
+ }
+.valorIco{
+  display: flex;
+  word-break: break-word;
+  align-items: center;
+  flex-flow: column;
+  width: 70%;
+  height: 100%;
+  h2{
+    color:white;
+    font-size: 30px;
+    margin-bottom: 20px;
+  }
+
+  p{
+    color: #e8e8e8;
+    text-align: center;
+    font-size: 14px;
+    text-align: justify;
+  }
+
+ 
+}
+.displayNone{
+  display: none;
+}
+
+
+.darkBack{
+  background: $darkBack;
+}
+.mybutton{
+  font-size: 22px;
+  color: white;
+  background: darkblue;
+  padding: 7px;
+  border-radius: 19px;
+}
+h2{
+  margin: 0;
+}
+.jwlowpadding{
+  padding: 10px;
+}
+.productStyle{
+  font-size: 65px;
+  word-break: break-word;
+  
+  color: $myred
+}
+
+.descripcionproducts{
+  font-size: 20px;
+  text-align: justify;
+  font-style: italic;
+  max-width: 450px;
+}
+.productStylesub{
+  text-align: left;
+ 
+  font-size: 50px;
+
+}
+.tituloBaner3{
+  text-align: left;
+ color:white;
+  font-size: 45px;
+  word-break: break-all;
+}
+.tituloBaner{
+  text-align: center;
+ color:black;
+  font-size: 35px;
+  word-break: break-all;
+}
+.jwcontBanner3{
+  display: flex;
+  flex-flow: column;
+  padding: 18px;
+p{
+
+  max-width: 370px;
+}
+  
+}
+.darkBackGradient{
+ 
+  background: linear-gradient(180deg, rgb(2, 0, 36) 43%, rgb(255, 255, 255) 75%);
+    width: 100%;
+    
+width: 100%;
+}
+.subtituloBanner3{
+  margin-top: 70px;
+  height: 100px;
+  font-size: 40px;
+  color: $myred;
+  font-weight: bold;
+  font-style: italic;
+  word-break: break-all;
+}
+.jwlowmarginleft{
+  margin-left: 5px!important;
+}
+.Productsimg{
+  height: 400px;
+  width: auto;
+}
+.contimage{ 
+width: 100%;
+height: 800px;
+    background-position-x: -223px;
+background-size: cover;
+  background-image: url("../public/fototabletgenfinal.png");
+  background-repeat: no-repeat;
+
+ 
+}
+.preciotext{
+  font-size: 30px;
+  color:$myred;
+
+  font-weight: bolder;
+}
+.contPreciongen{
+  display: flex;
+  justify-content: center;
+  flex-flow: column;
+  align-items: center;
+}
+.slider{
+  height: 800px!important; 
+ }
+.ContProducts{
+  position: relative;
+  flex-flow: column;
+  z-index: 3;
+  display: flex;
+  padding-bottom: 100px;
+}
+.inputorganize{
+  display: flex;
+  flex-flow:column;
+  justify-content: space-around;
+  align-items: center;
+  height: 250px;
+}
+.botonventa{
+  margin-top: 15px;
+      background-color: #048b0b;
+      box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+        0 2px 2px 0 rgba(0, 0, 0, 0.14),
+        0 1px 5px 0 rgba(0, 0, 0, 0.12);
+      color: #fff;
+      transition: background-color 15ms linear,
+        box-shadow 280ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+      height: 36px;
+      line-height: 2.25rem;
+      font-family: Roboto, sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+  }
+  .main{overflow: hidden;}
+@media screen and (min-width: 820px) {
+
+  .slider{
+    height: 500px!important; 
+   }
+   .footerimage{
+  
+    background-position-x: -300px;
+  
+  }
+  }
+  @media screen and (min-width: 1200px) {
+
+   
+     .footerimage{
+    
+      background-position-x: 0px;
+    
+    }
+    }

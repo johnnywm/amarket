@@ -1,0 +1,46 @@
+{
+  "name": "iglassop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5000",
+    "build": "next build",
+    "start": "next start -p $PORT"
+  },
+  "engines": {
+    "node": "16.14.2",
+    "npm": "7.24.2"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.3",
+    "@material-ui/icons": "^4.11.2",
+    "@material-ui/lab": "^4.0.0-alpha.57",
+    "@zeit/next-sass": "^1.0.1",
+    "bootstrap": "^4.5.3",
+    "next": "^10.0.0",
+    "next-compose-plugins": "^2.2.0",
+    "next-page-transitions": "^1.0.0-beta.2",
+    "next-with-workbox": "^2.0.1",
+    "nprogress": "^0.2.0",
+    "optimize-css-assets-webpack-plugin": "^6.0.1",
+    "postal": "^2.0.5",
+    "react": "^17.0.1",
+    "react-animate-mount": "^1.0.1",
+    "react-autosuggest": "^10.1.0",
+    "react-credit-cards": "^0.8.3",
+    "react-dom": "^17.0.1",
+    "react-facebook-login": "^4.1.1",
+    "react-material-ui-form-validator": "^2.1.1",
+    "react-motion": "^0.5.2",
+    "react-redux": "^7.2.2",
+    "react-responsive-carousel": "^3.2.11",
+    "react-transition-group": "^4.4.1",
+    "redux": "^4.0.5",
+    "redux-thunk": "^2.3.0",
+    "unfetch": "^5.0.0",
+    "workbox-window": "^6.1.5"
+  },
+  "devDependencies": {
+    "node-sass": "^6.0.1"
+  }
+}

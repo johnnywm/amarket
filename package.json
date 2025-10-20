@@ -1,0 +1,44 @@
+{
+  "name": "dtc",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5000",
+    "dev2": "next --openssl-legacy-provider -p 5000",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.6",
+    "@mui/material": "^5.14.5",
+    "bootstrap": "^5.3.1",
+    "hamburger-react": "^2.5.0",
+    "next": "^12.3.4",
+    "next-compose-plugins": "^2.2.1",
+    "next-page-transitions": "^1.0.0-beta.2",
+    "next-redux-wrapper": "^8.1.0",
+    "next-with-workbox": "^3.0.5",
+    "nprogress": "^0.2.0",
+    "postal": "^2.0.6",
+    "react": "^18.2.0",
+    "react-animate-mount": "^1.0.1",
+    "react-animated-slider": "^2.0.0",
+    "react-autosuggest": "^10.1.0",
+    "react-credit-cards": "^0.8.3",
+    "react-dom": "^18.2.0",
+    "react-email-editor": "^1.7.11",
+    "react-facebook-login": "^4.1.1",
+    "react-material-ui-form-validator": "^3.0.1",
+    "react-redux": "^8.1.2",
+    "react-responsive-carousel": "^3.2.23",
+    "react-transition-group": "^4.4.5",
+    "redux": "^4.2.1",
+    "redux-thunk": "^2.4.2",
+    "workbox-window": "^7.0.0"
+  },
+  "devDependencies": {
+    "sass": "^1.66.1"
+  }
+}

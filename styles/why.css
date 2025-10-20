@@ -1,0 +1,146 @@
+.valtext{
+    margin-top:0;
+    padding-top:5px;
+    margin-bottom:4px;
+
+}
+.subwhytext{
+    font-size:18px;
+}
+.subcontWhy{
+    width:100%;
+    height:100%;
+    display:flex;
+}
+.contimgwhy{
+  
+   width: 25%;
+    align-items: flex-start;
+    display: flex;
+    justify-content: center;
+  
+    
+}
+.imgwhy{
+    width:60%;
+   
+    height:auto;
+}
+.textwhy{
+    width:70%;
+}
+.titulowhy{
+    height: 10%;
+    font-weight: bolder;
+    width: 100%;
+    font-size: 45px;
+    color: white;
+    background-color: black;
+    border-radius: 10px;
+    padding: 5px;
+    margin-bottom: 2vh;
+    margin-top: 2vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+}
+
+hr {border: 0; 
+height: 20px; 
+box-shadow: inset 0 12px 12px -12px blue;
+
+width: 100%;
+
+}
+
+.contenidowhy{
+background-color: rgba(0, 0, 0, 0.404);
+color: white;
+flex-wrap: wrap;
+display: flex;  
+padding-top: 20px;
+padding-bottom: 20px;
+height: 60%;
+overflow: scroll;
+width: 80%;
+border-radius: 20px;
+}
+.imagenrepuestos{
+    margin-top:25px;
+    padding-left: 25px;
+      padding-right: 25px;
+      text-align: center;
+      height: 100%;
+
+}
+.full{
+    text-align: center;
+    height: 100%;
+    padding-left: 10px;
+      padding-right: 10px;
+}
+
+.Whycont{
+  
+    z-index: -5;
+    top:0px;
+    width: 100%; 
+    padding-top: 30px;
+
+   
+
+    position: fixed;
+    display: none;
+    flex-flow: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    
+  
+}
+    .whycontactive{
+        z-index: 2;
+        top: 0px;
+        width: 100%;
+ 
+     
+        position: fixed;
+        font-size: 30px;
+        display: flex;
+        flex-flow: column;
+        align-items: center;
+        justify-content: flex-start;
+        margin-top: 12vh;
+        height: 88vh;
+    }
+    #bg-why{
+        background-color: #b1abab;
+        background-image: url("/banner/2.jpg");
+        background-size: cover;
+    }
+    #bg-why.lazy {
+        background-image: none;
+        background-color: #F1F1FA;
+     }
+    @media only screen and (max-width: 400px){
+       .titulowhy{
+
+      
+        font-size: 35px;
+    }
+    }
+
+
+    @media only screen and (min-width: 600px) {
+        .contimgwhy{
+        width: 15%;
+        }
+        
+        }
+        @media only screen and (min-width: 1200px) {
+            .contimgwhy{
+            width: 6%;
+            }
+            
+            }

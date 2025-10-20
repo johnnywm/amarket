@@ -1,0 +1,11 @@
+    /*     <div className="botonexpansivo">
+                  <div id="especialidadB"   className={estilosnav} onClick={this.botonera}>
+                    <div className="iconic hideOnLg"   >
+                    <img src="/icons/web.svg" alt=""/>
+                    </div> 
+                    <div className="conttextbar" >
+                        <a href="/blog" className="enlacePrincipal">Blog</a>
+                        </div>
+                  </div>
+                
+                  </div>
