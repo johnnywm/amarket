@@ -12,7 +12,25 @@ import ProductSlider from "../../../../../reduxstore/components/ProductSlider/Pr
 
 import {connect} from 'react-redux';
 import Footer from "../../../../../components/footer"
+import SlateFooter from '../../../../../components/reusable/SlateFooter';
 import {Tdefault} from "./tdefault";
+
+// MUI Tabs + ProductTabCard para sliders de artículos relacionados
+import { Tabs, Tab, Box } from '@mui/material';
+import ProductTabCard from '../../../../../components/reusable/ProductTabCard';
+const buildArticuloProps = (jsondata) => {
+  let articulosHabiles = {};
+  if (jsondata.articulosHabiles && jsondata.articulosHabiles.length > 0) {
+    articulosHabiles = { articulosHabiles: { ...jsondata.articulosHabiles[0] } };
+  }
+  if (jsondata.articulosHabilesHTML) {
+    articulosHabiles = {
+      ...articulosHabiles,
+      articulosHTMLHabiles: jsondata.articulosHabilesHTML,
+    };
+  }
+  return articulosHabiles;
+};
 
 // Cargar CartPanel solo en cliente
 const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), { ssr: false });
@@ -21,35 +39,23 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
     try {
       
       const { articulo, slug: empresa } = ctx.query;
-      let dbName = null;
-      // 1. Intentar obtener tiendaConfig de localStorage (solo en cliente)
-      if (typeof window !== 'undefined') {
-        try {
-          const persistedState = localStorage.getItem('state');
-          if (persistedState) {
-            const parsed = JSON.parse(persistedState);
-            dbName = parsed?.tiendaConfig?.tiendas?.[empresa]?.dbName || null;
-          }
-       
-        } catch (e) {
-          // ignorar error de parseo
-        }
+      if (!articulo || !empresa) {
+        return { error: 'Parámetros de tienda o artículo no válidos.' };
       }
+
+      const requestBody = { Empresa: empresa };
+      const urlProd = process.env.NEXT_PUBLIC_PROD_URL + '/public/tienda/clientRequestDbname';
       
-      // Si no está en localStorage, hacer fetch a la tienda para obtener el dbName
-      if (!dbName) {
-        // Usar la lógica de fetchDatosTienda para obtener config y dbName
-        const requestBody = { Empresa: empresa };
-        const urlLocal = 'http://localhost:3000/public/tienda/clientRequestDbname';
-        const response = await fetch(urlLocal, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-        if (response.ok) {
-          const data = await response.json();
-          dbName = data?.dbName || null;
-        }
+      const response = await fetch(urlProd, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      
+      let dbName = null;
+      if (response.ok) {
+        const data = await response.json();
+        dbName = data?.dbName || null;
       }
      
       if (!dbName) {
@@ -60,10 +66,8 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         User: { DBname: dbName },
         Titulo: art,
       };
-      // Usar URL según entorno
-      const url = 'http://localhost:3000/public/engine/artbytitle';
-    
-      const datafetch = await fetch(url, {
+      const urlProd2 = process.env.NEXT_PUBLIC_PROD_URL + '/public/engine/artbytitle';
+      const datafetch = await fetch(urlProd2, {
         method: 'POST',
         body: JSON.stringify(datos),
         headers: { 'Content-Type': 'application/json' },
@@ -73,16 +77,7 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         return { error: 'Error al obtener datos del artículo.' };
       }
       const jsondata = await datafetch.json();
-      let articulosHabiles = {};
-      if (jsondata.articulosHabiles && jsondata.articulosHabiles.length > 0) {
-        articulosHabiles = { articulosHabiles: { ...jsondata.articulosHabiles[0] } };
-      }
-      if (jsondata.articulosHabilesHTML ) {
-        articulosHabiles = {
-          ...articulosHabiles,
-          articulosHTMLHabiles:jsondata.articulosHabilesHTML,
-        };
-      }
+      const articulosHabiles = buildArticuloProps(jsondata);
       return articulosHabiles;
     } catch (err) {
       return { error: 'Error en getInitialProps: ' + (err.message || err) };
@@ -92,9 +87,14 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
  maincompoRef = React.createRef();
 
     state={
+      mounted:false,
       ondesktop:false,
       stickyElement:false,
+      stickyAtBottom:false,
+      stickyExiting:false,
       stickyMobile:false,
+      stickyMobileAtBottom:false,
+      stickyMobileExiting:false,
       showCartPanel:false,
       snackOpen:false,
       snackMessage:'',
@@ -156,46 +156,146 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       this.setState({ snackOpen: false });
     }
 
-    componentDidMount(){
-  console.log("PROPS EN ARTICULO",this.props)
-      this.desktopverifi()
-   
-      let baseElement=   this.maincompoRef.current.clientHeight 
-      let contBotoneraElement = document.querySelector('.contBonotnesAccion');
+ componentDidMount() {
+  // Llevar la página al inicio
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 
-      window.addEventListener('scroll', (event) => {
-      
-       
-        const scrollTop = window.scrollY + window.innerHeight 
-       
-        if(this.state.ondesktop){
-         
-          console.log("scrollTop",scrollTop)
-          console.log("baseElement",baseElement)
-          if(  scrollTop >= baseElement ){
-       
-            this.setState({stickyElement:true})
-          
-          }else{
-            this.setState({stickyElement:false})
+  console.log("PROPS EN ARTICULO", this.props);
+
+  // Detectar desktop/mobile
+  this.desktopverifi();
+
+  // Marcar como montado en cliente para evitar hydration mismatch con Redux
+  this.setState({ mounted: true });
+
+  // Esperar a que TODO el DOM termine de renderizar
+  // (incluyendo imágenes y componentes hijos)
+  setTimeout(() => {
+    // Obtener referencias definitivas
+    this.baseElement = this.maincompoRef.current
+      ? this.maincompoRef.current.clientHeight
+      : 0;
+
+    this.contBotoneraElement = document.querySelector(
+      ".contBonotnesAccion"
+    );
+
+    // Función para recalcular posiciones
+    this.recalcularMedidas = () => {
+      this.baseElement = this.maincompoRef.current
+        ? this.maincompoRef.current.clientHeight
+        : 0;
+
+      this.contBotoneraElement = document.querySelector(
+        ".contBonotnesAccion"
+      );
+
+      if (this.contBotoneraElement) {
+        this.contBotoneraPosition =
+          this.contBotoneraElement.getBoundingClientRect().top +
+          window.scrollY;
+      } else {
+        this.contBotoneraPosition = 0;
+      }
+
+      // Referencia al htmlcontent para límite inferior del sticky
+      this.htmlContentElement = document.querySelector('.htmlcontent');
+      if (this.htmlContentElement) {
+        const rect = this.htmlContentElement.getBoundingClientRect();
+        this.htmlContentTop = rect.top + window.scrollY;
+        this.htmlContentBottom = rect.top + window.scrollY + rect.height;
+      } else {
+        this.htmlContentTop = 0;
+        this.htmlContentBottom = 0;
+      }
+    };
+
+    // Handler del scroll
+    this.handleScroll = () => {
+      const scrollTop = window.scrollY + window.innerHeight;
+
+      if (this.state.ondesktop) {
+        // Si está arriba, nunca activar sticky
+        if (window.scrollY === 0) {
+          if (this.state.stickyElement) {
+            this.setState({ stickyElement: false });
           }
-        } else {
-          const contBotoneraPosition = contBotoneraElement.getBoundingClientRect().top + window.scrollY;
-          console.log("scrollTop",scrollTop)
-          console.log("contBotoneraPosition",  contBotoneraPosition +window.innerHeight)
-          if (scrollTop >= contBotoneraPosition+ window.innerHeight) {
-            this.setState({ stickyMobile: true });
-          } else {
-            this.setState({ stickyMobile: false });
-          }
+          return;
         }
-      })
-      console.log(this.props)
-      window.addEventListener('resize',()=>{
-      
-        this.desktopverifi()
-         })
-    }
+
+        const margen = 15;
+
+        // Activar sticky cuando el scroll pase el maincompo
+        const pasadoMaincompo = scrollTop >= (this.baseElement + margen);
+        // Detectar cuando el scroll llegue al final del htmlcontent
+        const llegadoAlHtml = this.htmlContentBottom > 0 && scrollTop >= this.htmlContentBottom;
+
+        const sticky = pasadoMaincompo && !llegadoAlHtml;
+        const atBottom = pasadoMaincompo && llegadoAlHtml;
+
+        const update = {};
+        // Desktop: sticky se activa → set directo. Sticky se desactiva → fade-out primero
+        if (sticky && !this.state.stickyElement && !this.state.stickyExiting) {
+          update.stickyElement = true;
+          update.stickyExiting = false;
+        } else if (!sticky && this.state.stickyElement && !this.state.stickyExiting) {
+          update.stickyElement = false;
+          update.stickyExiting = true;
+          this._stickyExitTimer = setTimeout(() => {
+            this.setState({ stickyExiting: false });
+          }, 350);
+        }
+        if (atBottom !== this.state.stickyAtBottom) update.stickyAtBottom = atBottom;
+        if (Object.keys(update).length > 0) this.setState(update);
+      } else {
+        const pasadoBotonera = scrollTop >= (this.contBotoneraPosition + window.innerHeight);
+        const llegadoAlHtmlMobile = this.htmlContentBottom > 0 && scrollTop >= this.htmlContentBottom;
+
+        const stickyMobile = pasadoBotonera && !llegadoAlHtmlMobile;
+        const atBottomMobile = pasadoBotonera && llegadoAlHtmlMobile;
+
+        const updateMob = {};
+        // Mobile: sticky se activa → set directo. Sticky se desactiva → fade-out primero
+        if (stickyMobile && !this.state.stickyMobile && !this.state.stickyMobileExiting) {
+          updateMob.stickyMobile = true;
+          updateMob.stickyMobileExiting = false;
+        } else if (!stickyMobile && this.state.stickyMobile && !this.state.stickyMobileExiting) {
+          updateMob.stickyMobile = false;
+          updateMob.stickyMobileExiting = true;
+          this._stickyMobileExitTimer = setTimeout(() => {
+            this.setState({ stickyMobileExiting: false });
+          }, 350);
+        }
+        if (atBottomMobile !== this.state.stickyMobileAtBottom) updateMob.stickyMobileAtBottom = atBottomMobile;
+        if (Object.keys(updateMob).length > 0) this.setState(updateMob);
+      }
+    };
+
+    // Handler del resize
+    this.handleResize = () => {
+      this.desktopverifi();
+      this.recalcularMedidas();
+      this.handleScroll();
+    };
+
+    // Calcular medidas finales
+    this.recalcularMedidas();
+
+    // Agregar listeners
+    window.addEventListener("scroll", this.handleScroll);
+    window.addEventListener("resize", this.handleResize);
+
+    // Ejecutar una vez con las medidas correctas
+    this.handleScroll();
+  }, 100); // Espera 100 ms para asegurar render completo
+}
+componentWillUnmount() {
+  window.removeEventListener("scroll", this.handleScroll);
+  window.removeEventListener("resize", this.handleResize);
+}
+
     desktopverifi(){
       if(window.document.body.clientWidth >= 1100){
         this.setState({ondesktop:true})
@@ -206,13 +306,42 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         this.setState({ondesktop:false})
       }
     }
-    render(){
 
+    // Determinar si un color es claro u oscuro (misma lógica que tienda/index.js)
+    isColorLight = (color) => {
+      let r, g, b;
+      if (color && color.startsWith('#')) {
+        let hex = color.replace('#', '');
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+      } else if (color && color.startsWith('rgb')) {
+        const values = color.match(/\d+/g).map(Number);
+        [r, g, b] = values;
+      } else {
+        return false;
+      }
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      return luminance > 186;
+    };
+
+    render(){
+console.log("PROPS EN RENDER",this.props)
 let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
   let imagenes
   let productoElegido
   let   publicHTML=Tdefault
-  let sticky = this.state.stickyElement?"stickyon":"stickyoff"
+  let sticky;
+  if (this.state.stickyAtBottom) {
+    sticky = 'stickybottom';
+  } else if (this.state.stickyExiting) {
+    sticky = 'stickyexiting';
+  } else if (this.state.stickyElement) {
+    sticky = 'stickyon';
+  } else {
+    sticky = 'stickyoff';
+  }
   if(this.props.articulosHabiles){
 
     if(this.props.articulosHabiles.Imagen[0] != ""){
@@ -276,28 +405,43 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
 `}</style>
             <div className="card">
               <div className="contFlex">
-              <div   className="contCompo">
+              <div className={`contCompo${this.state.stickyAtBottom ? ' stickyparentbottom' : ''}`}>
               <div  ref={this.maincompoRef} className={`subContCompo ${sticky}`}>
               <ProductSlider images={imagenes}/>
    <ProductDetailComponent product={productoElegido}/>
 <div className={`contBonotnesAccion `}>
- <div className={`contB ${this.state.stickyMobile ? 'stickyMobile' : ''}` }>
+ <div className={`contB${this.state.stickyMobileExiting ? ' stickyMobileExiting' : ''}${this.state.stickyMobile ? ' stickyMobile' : ''}${this.state.stickyMobileAtBottom ? ' stickyMobileAtBottom' : ''}`}>
  <Animate show={!fueraDeStock}>
                  <div className="modern-action-row" style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
   <a
-    className="modern-whatsapp-btn"
-    href={`https://api.whatsapp.com/send?phone=593988801564&text=Estoy%20interesado%20en%20solicitar%20un/una%20${this.props.articulosHabiles.Titulo}%20con%20valor%20de%20$${this.props.articulosHabiles.Precio_Venta}`}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-  >
-    <img
+  className="modern-whatsapp-btn"
+  href={`https://api.whatsapp.com/send?phone=${
+    (() => {
+      const tiendas =
+        this.props.state?.tiendaConfig?.tiendas || {};
+
+      const slug =
+        this.props.router?.query?.slug;
+
+      const waNumber = tiendas[slug]?.WaNumber || "0998801564";
+
+      // Si empieza con 0, se reemplaza por 593
+      return waNumber.startsWith("0")
+        ? `593${waNumber.slice(1)}`
+        : waNumber;
+    })()
+  }&text=${encodeURIComponent(
+    `Estoy interesado en solicitar un/una ${this.props.articulosHabiles.Titulo} con valor de $${this.props.articulosHabiles.Precio_Venta}`
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+> <img
       src="https://upload.wikimedia.org/wikipedia/commons/5/5e/WhatsApp_icon.png"
       alt="WhatsApp"
       style={{ width: '28px', height: '28px' }}
     />
-    WhatsApp
-  </a>
+    WhatsApp</a>
   <button
     className="modern-cart-btn cartAccent"
     onClick={() => this.handleCarritoTienda(this.props.articulosHabiles)}
@@ -336,7 +480,157 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
             </div>
          
             </div>
-        
+
+        {/* ===== SLIDER: Artículos del mismo GRUPO (solo cliente) ===== */}
+        {this.state.mounted && (() => {
+          const slugKey = this.props.router?.query?.slug;
+          const tiendaCfg = this.props.state?.tiendaConfig?.tiendas?.[slugKey];
+          const colorPrimario = tiendaCfg?.colorPrimario || '#ff004c';
+          const allProducts = this.props.state?.shop?.products || [];
+          const currentId = this.props.articulosHabiles?._id;
+          const grupoActual = this.props.articulosHabiles?.Grupo;
+          const grupoArts = grupoActual
+            ? allProducts.filter(a => a._id !== currentId && String(a?.Grupo || '').toLowerCase() === String(grupoActual).toLowerCase())
+            : [];
+          if (grupoArts.length === 0) return null;
+          return (
+            <Box sx={{ width: '100%', maxWidth: 1100, margin: '1.5rem auto', paddingTop: '10px' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222', marginBottom: '0.5rem', textTransform: 'capitalize' }}>
+                Más de {grupoActual}
+              </div>
+              <Tabs
+                value={false}
+                onChange={null}
+                variant="scrollable"
+                scrollButtons={true}
+                aria-label="articulos-mismo-grupo"
+                sx={{
+                  minHeight: 260,
+                  '& .MuiTab-root': {
+                    minWidth: 220,
+                    maxWidth: 260,
+                    minHeight: 260,
+                    maxHeight: 320,
+                    margin: '25px 15px',
+                    borderRadius: '22px',
+                    background: '#fff',
+                    boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingTop: '1px',
+                    position: 'relative',
+                    textAlign: 'center',
+                    transition: 'box-shadow 0.18s, transform 0.18s',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      transform: 'scale(1.04)',
+                      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+                    },
+                    '&.Mui-selected': {
+                      background: colorPrimario,
+                      color: (this.isColorLight(colorPrimario) ? '#000' : '#fff'),
+                      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+                    },
+                  },
+                }}
+              >
+                {grupoArts.map((art, aidx) => (
+                  <Tab
+                    key={art._id || aidx}
+                    disableRipple
+                    icon={
+                      <ProductTabCard
+                        art={art}
+                        empresa={this.props.router?.query?.slug}
+                        primaryColor={colorPrimario}
+                        priceTextColor={this.isColorLight(colorPrimario) ? '#000' : '#fff'}
+                        onAddToCart={(item) => this.handleCarritoTienda(item)}
+                      />
+                    }
+                  />
+                ))}
+              </Tabs>
+            </Box>
+          );
+        })()}
+
+        {/* ===== SLIDER: Artículos de la misma CATEGORÍA (solo cliente) ===== */}
+        {this.state.mounted && (() => {
+          const slugKey = this.props.router?.query?.slug;
+          const tiendaCfg = this.props.state?.tiendaConfig?.tiendas?.[slugKey];
+          const colorPrimario = tiendaCfg?.colorPrimario || '#ff004c';
+          const allProducts = this.props.state?.shop?.products || [];
+          const currentId = this.props.articulosHabiles?._id;
+          const catActual = this.props.articulosHabiles?.Categoria?.nombreCat;
+          const catArts = catActual
+            ? allProducts.filter(a => a._id !== currentId && String(a?.Categoria?.nombreCat || '').toLowerCase() === String(catActual).toLowerCase())
+            : [];
+          if (catArts.length === 0) return null;
+          return (
+            <Box sx={{ width: '100%', maxWidth: 1100, margin: '1.5rem auto', paddingTop: '10px' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222', marginBottom: '0.5rem', textTransform: 'capitalize' }}>
+                Más en {catActual}
+              </div>
+              <Tabs
+                value={false}
+                onChange={null}
+                variant="scrollable"
+                scrollButtons={true}
+                aria-label="articulos-misma-categoria"
+                sx={{
+                  minHeight: 260,
+                  '& .MuiTab-root': {
+                    minWidth: 220,
+                    maxWidth: 260,
+                    minHeight: 260,
+                    maxHeight: 320,
+                    margin: '25px 15px',
+                    borderRadius: '22px',
+                    background: '#fff',
+                    boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingTop: '1px',
+                    position: 'relative',
+                    textAlign: 'center',
+                    transition: 'box-shadow 0.18s, transform 0.18s',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      transform: 'scale(1.04)',
+                      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+                    },
+                    '&.Mui-selected': {
+                      background: colorPrimario,
+                      color: (this.isColorLight(colorPrimario) ? '#000' : '#fff'),
+                      boxShadow: '0 8px 32px 0 rgba(0,0,0,0.18)',
+                    },
+                  },
+                }}
+              >
+                {catArts.map((art, aidx) => (
+                  <Tab
+                    key={art._id || aidx}
+                    disableRipple
+                    icon={
+                      <ProductTabCard
+                        art={art}
+                        empresa={this.props.router?.query?.slug}
+                        primaryColor={colorPrimario}
+                        priceTextColor={this.isColorLight(colorPrimario) ? '#000' : '#fff'}
+                        onAddToCart={(item) => this.handleCarritoTienda(item)}
+                      />
+                    }
+                  />
+                ))}
+              </Tabs>
+            </Box>
+          );
+        })()}
+
             <style >{`
             #u_body{
                     
@@ -372,12 +666,30 @@ margin-bottom:10px;
                 .subContCompo{
                   width: 100%; 
                   padding-bottom: 10px;
+                  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .stickyon{
                   position: fixed;
                   width: 30.2%; 
                   bottom: -5px;
+                  animation: stickyFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                }
+                .stickybottom{
+                  position: relative;
+                  width: 100%;
+                  animation: stickyFadeToBottom 0.35
+                }
+                @keyframes stickyFadeIn {
+                  from { opacity: 0.85; transform: translateY(12px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes stickyFadeToBottom {
+                  from { opacity: 1; transform: translateY(0); }
+                  to { opacity: 0.95; transform: translateY(0); }
+                }
+                .stickyparentbottom{
                 
+                  justify-content: flex-end !important;
                 }
                 
                 @media only screen and (min-width: 1100px) { 
@@ -425,7 +737,21 @@ margin-bottom:10px;
       top: 0px;
           left: 0px;
       width: 100%;
+      animation: stickyMobileFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       }
+     .stickyMobileAtBottom{
+      position: relative;
+      width: 100%;
+      animation: stickyMobileFadeToBottom 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+     @keyframes stickyMobileFadeIn {
+       from { opacity: 0.8; transform: translateY(-8px); }
+       to { opacity: 1; transform: translateY(0); }
+     }
+     @keyframes stickyMobileFadeToBottom {
+       from { opacity: 1; transform: translateY(0); }
+       to { opacity: 0.95; transform: translateY(0); }
+     }
 
   .modern-card-body44 {
  
@@ -542,6 +868,18 @@ height: 75px;
                 `}
 
             </style>
+
+        {/* ===== SlateFooter ===== */}
+        {this.state.mounted && (
+          <SlateFooter
+            config={(() => {
+              const slugKey = this.props.router?.query?.slug;
+              return this.props.state?.tiendaConfig?.tiendas?.[slugKey] || {};
+            })()}
+            empresa={this.props.router?.query?.slug || ''}
+          />
+        )}
+
         </div>
     );
 }

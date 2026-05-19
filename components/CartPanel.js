@@ -14,8 +14,6 @@ import { removeProductToCart, incrementCartQuantity, decrementCartQuantity } fro
 
 import dynamic from 'next/dynamic';
 const Compra = dynamic(() => import('../components/landingContactPayment'), { ssr: false });
-// Asegura que la animación de entrada ocurra solo una vez por sesión de la página
-let CART_PANEL_ENTERED_ONCE = false;
 
 class CartPanel extends React.Component {
   // Convierte HEX a RGBA con alpha
@@ -45,31 +43,91 @@ class CartPanel extends React.Component {
     isMobile: false,
     closing: false,
     collapsed: false,
-    entering: false,  
+    collapsing: false,
+    entering: true,
     compra: false
   };
 
 
 
   componentDidMount() {
-
     this.setState({ isMobile: window.innerWidth <= 768 });
     window.addEventListener('resize', this.handleResize);
-
-    // Una sola animación de entrada por sesión
-    if (!CART_PANEL_ENTERED_ONCE) {
-      this.setState({ entering: true });
-      CART_PANEL_ENTERED_ONCE = true;
-    }
-    // Guard para evitar doble notificación al cerrar
     this._closedNotified = false;
+
+    if (!this.props.cart || this.props.cart.length === 0) {
+      this.scheduleClosePanel();
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      this.setState({
+        entering: true,
+        closing: false,
+        collapsed: false,
+        collapsing: false,
+      });
+    });
   }
 
   componentWillUnmount() {
     window.removeEventListener('resize', this.handleResize);
+    clearTimeout(this._collapseTimer);
+    clearTimeout(this._closeFallback);
   }
 
-  
+  componentDidUpdate(prevProps) {
+    const prevLen = Array.isArray(prevProps.cart) ? prevProps.cart.length : 0;
+    const len = Array.isArray(this.props.cart) ? this.props.cart.length : 0;
+    if (prevLen > 0 && len === 0 && !this.state.closing) {
+      this.scheduleClosePanel();
+    }
+  }
+
+  finishClosePanel = () => {
+    if (this._closedNotified) return;
+    this._closedNotified = true;
+    clearTimeout(this._closeFallback);
+    try {
+      this.props.getoff && this.props.getoff();
+    } catch (_) {}
+  };
+
+  scheduleClosePanel = () => {
+    if (this.state.closing) return;
+    this._closedNotified = false;
+    clearTimeout(this._closeFallback);
+    this.setState({
+      closing: true,
+      collapsing: false,
+      entering: false,
+    }, () => {
+      this._closeFallback = setTimeout(this.finishClosePanel, 480);
+    });
+  };
+
+  handleRemoveProduct = (productId, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const { dispatch, cart } = this.props;
+    const len = Array.isArray(cart) ? cart.length : 0;
+    if (len <= 1) {
+      this._closedNotified = false;
+      clearTimeout(this._closeFallback);
+      this.setState({
+        closing: true,
+        collapsing: false,
+        entering: false,
+      }, () => {
+        dispatch(removeProductToCart(productId));
+        this._closeFallback = setTimeout(this.finishClosePanel, 480);
+      });
+      return;
+    }
+    dispatch(removeProductToCart(productId));
+  };
 
   handleResize = () => {
     this.setState({ isMobile: window.innerWidth <= 768 });
@@ -79,39 +137,74 @@ class CartPanel extends React.Component {
     this.setState({ selectedTab: newValue });
   };
 
-  handleToggleCollapse = () => {
-    if (this.state.closing) return; // ignorar mientras cierra
-    this.setState(prev => ({ collapsed: !prev.collapsed }));
+  handleExpandFromBar = (e) => {
+    if (this.state.closing || !this.state.collapsed) return;
+    if (e && e.target && e.target.closest && e.target.closest('.cart-panel-collapse-toggle')) return;
+    clearTimeout(this._collapseTimer);
+    this.setState({ collapsed: false, collapsing: false });
+  };
+
+  handleToggleCollapse = (e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (this.state.closing) return;
+    this.setState(prev => ({
+      collapsed: !prev.collapsed,
+      collapsing: !prev.collapsed,
+    }));
+    if (!this.state.collapsed) {
+      this._collapseTimer = setTimeout(() => {
+        this.setState({ collapsing: false });
+      }, 420);
+    } else {
+      clearTimeout(this._collapseTimer);
+      this.setState({ collapsing: false });
+    }
+  };
+
+  handleClosePanel = () => {
+    this.scheduleClosePanel();
   };
 
   handleAnimationEnd = (e) => {
-    // Fin de animación de entrada
-    if (this.state.entering) {
+    if (e.target !== e.currentTarget) return;
+    const animName = e.animationName || '';
+    if (this.state.entering && (animName.includes('slideIn') || animName.includes('slideUp'))) {
       this.setState({ entering: false });
+      return;
     }
-    // Fin de animación de salida: notificar exactamente una vez
-    if (this.state.closing && !this._closedNotified) {
-      this._closedNotified = true;
-      try {
-        this.props.getoff && this.props.getoff();
-      } catch (_) {}
+    if (this.state.closing && (animName.includes('slideOut') || animName.includes('slideDown'))) {
+      this.finishClosePanel();
     }
-  }
+  };
 
   render() {
-    console.log(this.state)
-    const { cart, dispatch, primaryColor } = this.props;
-    const { selectedTab, isMobile, collapsed } = this.state;
+    const { cart, dispatch, primaryColor, secondaryColor } = this.props;
+    const { selectedTab, isMobile, collapsed, collapsing } = this.state;
     const primary = primaryColor || '#ff004c';
+    const secondary = secondaryColor || '#38bdf8';
     const primaryTint = this.hexToRgba(primary, 0.12);
     const primaryBorder = this.hexToRgba(primary, 0.20);
+    const barClickable = collapsed && !this.state.closing;
  
     const totalProductos = cart.reduce((acc, item) => acc + (item.CantidadCompra || 1), 0);
     const totalValor = cart.reduce((acc, item) => acc + (item.Precio_Venta * (item.CantidadCompra || 1)), 0);
     return (
       <div
-        className={`cart-panel ${isMobile ? 'cart-panel-mobile' : 'cart-panel-desktop'}${this.state.closing ? ' cart-panel-closing' : ''}${collapsed ? ' collapsed' : ''}${this.state.entering ? ' cart-panel-enter' : ''}`}
+        className={`cart-panel ${isMobile ? 'cart-panel-mobile' : 'cart-panel-desktop'}${this.state.closing ? ' cart-panel-closing' : ''}${collapsed ? ' collapsed' : ''}${collapsing ? ' cart-panel-collapsing' : ''}${this.state.entering ? ' cart-panel-enter' : ''}`}
         onAnimationEnd={this.handleAnimationEnd}
+        onClick={barClickable ? this.handleExpandFromBar : undefined}
+        role={barClickable ? 'button' : undefined}
+        aria-label={barClickable ? 'Abrir carrito' : undefined}
+        style={!isMobile ? {
+          '--cart-primary': primary,
+          '--cart-secondary': secondary,
+          '--cart-primary-tint': primaryTint,
+          '--cart-primary-border': primaryBorder,
+          cursor: barClickable ? 'pointer' : undefined,
+        } : {
+          cursor: barClickable ? 'pointer' : undefined,
+          '--cart-secondary': secondary,
+        }}
       >
         <div className="cart-panel-header">
           <button
@@ -126,10 +219,13 @@ class CartPanel extends React.Component {
               collapsed ? <KeyboardArrowLeftIcon fontSize="small" /> : <KeyboardArrowRightIcon fontSize="small" />
             )}
           </button>
-          <div className="cart-panel-header-flex">
-            <div className="cart-panel-header-total">
-              <span className="cart-panel-total">Total: ${totalValor.toFixed(2)}</span>
-            </div>
+        </div>
+        <div className="cart-panel-inner">
+          <div className="cart-panel-header-block">
+            <div className="cart-panel-header-flex">
+              <div className="cart-panel-header-total">
+                <span className="cart-panel-total">Total: ${totalValor.toFixed(2)}</span>
+              </div>
             <div className="cart-panel-header-actions">
                            <span className="cart-panel-title">{totalProductos} producto{totalProductos !== 1 ? 's' : ''} </span>
 
@@ -140,7 +236,7 @@ class CartPanel extends React.Component {
 
             </div>
           </div>
-        </div>
+          </div>
         {isMobile ? (
           <Box sx={{ width: '100%', height: '100%' }}>
             <Tabs
@@ -179,19 +275,7 @@ class CartPanel extends React.Component {
                       <button
                         className="cart-panel-remove-btn"
                         title="Eliminar"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          // Evaluar si con esta acción el carrito quedará vacío
-                          const len = (this.props.state && this.props.state.shop && this.props.state.shop.cart) ? this.props.state.shop.cart.length : 0;
-                         console.log(len)
-                          if (len == 1) {
-                            console.log("Cerrando")
-                            this.setState({ closing: true, collapsed: false });
-                            this.props.getoff()
-                          }
-                          dispatch(removeProductToCart(prod._id));
-                        }}
+                        onClick={(e) => this.handleRemoveProduct(prod._id, e)}
                       >
                         <span style={{fontSize:'1.05rem',fontWeight:700,display:'block',lineHeight:1}}>×</span>
                       </button>
@@ -230,15 +314,7 @@ class CartPanel extends React.Component {
                 <button
                   className="cart-panel-remove-btn"
                   title="Eliminar"
-                  onClick={() => {
-                    // Evaluar si con esta acción el carrito quedará vacío
-                    const len = (this.props.state && this.props.state.shop && this.props.state.shop.cart) ? this.props.state.shop.cart.length : (Array.isArray(this.props.cart) ? this.props.cart.length : 0);
-                    if (len <= 1) {
-                      this.setState({ closing: true, collapsed: false });
-                      this.props.getoff();
-                    }
-                    dispatch(removeProductToCart(prod._id));
-                  }}
+                  onClick={(e) => this.handleRemoveProduct(prod._id, e)}
                 >
                   <span style={{fontSize:'1.05rem',fontWeight:700,display:'block',lineHeight:1}}>×</span>
                 </button>
@@ -246,36 +322,41 @@ class CartPanel extends React.Component {
             ))}
           </div>
         )}
+        </div>
         <Animate show={this.state.compra}>
             <Compra flechafun ={ ()=>{this.setState({compra:false}); this.props.getoff(); }}/>
         </Animate>
         <style jsx>{`
-          /* Medidas de la pestaña visible al colapsar */
-          .cart-panel { --handle-w: 24px; --handle-h: 28px; }
-          /* Desktop: deja visible exactamente --handle-w */
-          .cart-panel.cart-panel-desktop.collapsed {
-            transform: translateX(calc(95% - var(--handle-w)));
+          .cart-panel {
+            --handle-w: 28px;
+            --handle-h: 28px;
+            --cart-bar: var(--cart-secondary, #38bdf8);
           }
-          /* Mobile: deja visible exactamente --handle-h */
+          .cart-panel-inner {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.32s ease;
+          }
+          .cart-panel-header-block {
+            padding: 0 12px 8px 40px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+          }
           .cart-panel.cart-panel-mobile.collapsed {
             transform: translateY(calc(98% - var(--handle-h)));
-          }
-          .cart-panel-closing.cart-panel-mobile {
-            animation: slideDownCart 0.35s cubic-bezier(.4,1.6,.3,1) forwards;
-          }
-          .cart-panel-closing.cart-panel-desktop {
-            animation: slideOutCart 0.35s cubic-bezier(.4,1.6,.3,1) forwards;
           }
           .cart-panel {
             position: fixed;
             z-index: 1200;
             background: #fff;
-            box-shadow: 0 2px 24px 0 rgba(0,0,0,0.18);
+            box-shadow: 0 2px 24px 0 rgba(15, 23, 42, 0.14);
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: stretch;
-            transition: transform 0.35s cubic-bezier(.4,1.6,.3,1), box-shadow 0.2s;
             overflow: hidden;
           }
           .cart-panel-mobile {
@@ -291,22 +372,76 @@ class CartPanel extends React.Component {
             right: 0;
             width: 200px;
             height: 100vh;
-            border-radius: 18px 0 0 18px;
-            box-shadow: -2px 0 24px 0 rgba(0,0,0,0.18);
+            border-radius: 16px 0 0 16px;
+            box-shadow: -2px 0 24px rgba(15, 23, 42, 0.12);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        background 0.35s ease,
+                        box-shadow 0.35s ease;
           }
-          .cart-panel-enter.cart-panel-mobile {
-            animation: slideUpCart 1s cubic-bezier(.4,1.6,.3,1);
+          .cart-panel-desktop.collapsed:not(.cart-panel-closing) {
+            width: var(--handle-w);
+            background: var(--cart-bar);
+            animation: none !important;
+            transform: none !important;
+            border-radius: 14px 0 0 14px;
+            box-shadow: -2px 0 16px rgba(15, 23, 42, 0.18);
+            cursor: pointer;
           }
-          .cart-panel-enter.cart-panel-desktop {
-            animation: slideInCart 1s cubic-bezier(.4,1.6,.3,1);
+          .cart-panel-mobile.collapsed:not(.cart-panel-closing) {
+            cursor: pointer;
+          }
+          .cart-panel-desktop.collapsed .cart-panel-inner,
+          .cart-panel-desktop.cart-panel-collapsing .cart-panel-inner {
+            transform: translateX(50px);
+            opacity: 0;
+            pointer-events: none;
+          }
+          .cart-panel-enter.cart-panel-mobile:not(.collapsed) {
+            animation: slideUpCart 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .cart-panel-enter.cart-panel-desktop:not(.collapsed) {
+            animation: slideInCart 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+          }
+          .cart-panel-enter:not(.collapsed) .cart-panel-inner {
+            animation: cartInnerEnter 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+          }
+          .cart-panel-closing {
+            pointer-events: none;
+          }
+          .cart-panel-closing .cart-panel-inner {
+            opacity: 0 !important;
+            pointer-events: none;
           }
           .cart-panel-closing.cart-panel-mobile {
-            animation: slideDownCart 0.45s cubic-bezier(.4,1.6,.3,1) forwards;
+            animation: slideDownCart 0.42s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
           }
           .cart-panel-closing.cart-panel-desktop {
-            animation: slideOutCart 0.45s cubic-bezier(.4,1.6,.3,1) forwards;
+            animation: slideOutCart 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
           }
-          .cart-panel-header { position: relative; }
+          .cart-panel-closing.cart-panel-desktop .cart-panel-inner,
+          .cart-panel-closing.cart-panel-mobile .cart-panel-inner {
+            animation: none !important;
+          }
+          .cart-panel-closing.cart-panel-desktop.collapsed {
+            width: var(--handle-w) !important;
+            background: var(--cart-bar) !important;
+          }
+          .cart-panel-header { position: relative; z-index: 4; }
+          .cart-panel-desktop .cart-panel-header {
+            position: absolute;
+            inset: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            pointer-events: none;
+          }
+          .cart-panel-desktop.collapsed .cart-panel-header,
+          .cart-panel-desktop.cart-panel-collapsing .cart-panel-header {
+            pointer-events: none;
+          }
+          .cart-panel-desktop .cart-panel-collapse-toggle {
+            pointer-events: auto;
+          }
           .cart-panel-collapse-toggle {
             position: absolute;
             top: 6px;
@@ -327,15 +462,34 @@ class CartPanel extends React.Component {
           }
           .cart-panel.collapsed .cart-panel-collapse-toggle { background: ${primaryTint}; color: ${primary}; }
           .cart-panel-collapse-toggle:hover { background: #eaeaea; transform: scale(1.05); }
-          .cart-panel.collapsed .cart-panel-tabs, .cart-panel.collapsed .cart-panel-list-vertical {
-            pointer-events: none; /* desactiva interacción cuando está colapsado */
+          .cart-panel-desktop.collapsed .cart-panel-collapse-toggle,
+          .cart-panel-desktop.cart-panel-collapsing .cart-panel-collapse-toggle {
+            top: 50%;
+            left: 50%;
+            right: auto;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+            box-shadow: none;
+          }
+          .cart-panel-desktop.collapsed .cart-panel-collapse-toggle:hover,
+          .cart-panel-desktop.cart-panel-collapsing .cart-panel-collapse-toggle:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translate(-50%, -50%) scale(1.06);
+          }
+          .cart-panel.collapsed .cart-panel-inner {
+            pointer-events: none;
           }
           @keyframes slideUpCart {
             from { transform: translateY(220px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
           }
           @keyframes slideInCart {
-            from { transform: translateX(220px); opacity: 0; }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes cartInnerEnter {
+            from { transform: translateX(36px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
           }
           @keyframes slideDownCart {
@@ -344,7 +498,7 @@ class CartPanel extends React.Component {
           }
           @keyframes slideOutCart {
             from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(220px); opacity: 0; }
+            to { transform: translateX(100%); opacity: 0; }
           }
           .cart-panel-header {
             display: flex;
@@ -491,9 +645,9 @@ class CartPanel extends React.Component {
           @media (min-width: 769px) {
             /* En desktop, reserva espacio a la izquierda para la flecha */
             .cart-panel-header { padding-left: 40px; }
-            .cart-panel-desktop.collapsed .cart-panel-header {
-              background: ${primaryTint};
-              border-left: 1px solid ${primaryBorder};
+            .cart-panel-desktop.collapsed .cart-panel-header-block,
+            .cart-panel-desktop.cart-panel-collapsing .cart-panel-header-block {
+              display: none;
             }
             .cart-panel-header-flex {
               flex-direction: column;
@@ -581,9 +735,9 @@ class CartPanel extends React.Component {
             .cart-panel-mobile.collapsed .cart-panel-header {
               height: var(--handle-h);
               min-height: var(--handle-h);
-              padding: 2px 8px 2px 36px; /* espacio para la flecha */
-              background: ${primaryTint}; /* primario sutil */
-              border-bottom: 1px solid ${primaryBorder};
+              padding: 2px 8px 2px 36px;
+              background: var(--cart-bar);
+              border-bottom: none;
             }
             .cart-panel-mobile.collapsed .cart-panel-header-flex { display: none; }
             .cart-panel-mobile.collapsed .cart-panel-tabs,
@@ -736,18 +890,17 @@ class CartPanel extends React.Component {
 const mapStateToProps = (state, ownProps) => {
   const cart = state.shop && state.shop.cart ? state.shop.cart : [];
   let primaryColor = '#ff004c';
+  let secondaryColor = '#38bdf8';
   try {
     const tiendas = state.tiendaConfig && state.tiendaConfig.tiendas ? state.tiendaConfig.tiendas : {};
     const slug = ownProps && ownProps.router && ownProps.router.query ? ownProps.router.query.slug : undefined;
-    if (slug && tiendas[slug] && tiendas[slug].colorPrimario) {
-      primaryColor = tiendas[slug].colorPrimario;
-    } else {
-      const first = Object.values(tiendas)[0];
-      if (first && first.colorPrimario) primaryColor = first.colorPrimario;
+    const config = (slug && tiendas[slug]) ? tiendas[slug] : Object.values(tiendas)[0];
+    if (config) {
+      if (config.colorPrimario) primaryColor = config.colorPrimario;
+      if (config.colorSecundario) secondaryColor = config.colorSecundario;
     }
   } catch (e) {}
-  // Exponer el state completo para validación explícita this.props.state.shop.cart.length
-  return { cart, primaryColor, state };
+  return { cart, primaryColor, secondaryColor, state };
 };
 
 export default withRouter(connect(mapStateToProps)(CartPanel));

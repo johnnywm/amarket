@@ -23,6 +23,9 @@ class Contacto extends Component {
         }
 
     componentDidMount(){
+
+
+      console.log(this.props)
    
         ValidatorForm.addValidationRule('requerido', (value) => {
           if (value === "") {
@@ -79,7 +82,7 @@ class Contacto extends Component {
         
           let data = {
             clienteNombre, clienteTelefono,
-            cuentadestino:"dtecnicocelular@gmail.com"
+            cuentadestino:this.props?.datosTienda?.correoNotificaciones
           }
             
      
@@ -88,7 +91,7 @@ class Contacto extends Component {
         var url = 'http://localhost:3000/public/solicitudllamada';
         var deployUrl= 'https://hidden-citadel-66701.herokuapp.com/public/lingua'
         var deployUrl2 =  `${process.env.URL_BACKEND_SERVER}/solicitudllamada `
-        fetch(deployUrl2, {
+        fetch(url, {
           method: 'POST', // or 'PUT'
           body: JSON.stringify(data), // data can be `string` or {object}!
          headers:{
@@ -209,13 +212,22 @@ console.log(this.state)
 <div className="contcontactoDirecto">
  
   <div className="cdoptions">
-    <a style={{textDecoration:"none"}} target=" _blank"  href="https://api.whatsapp.com/send?phone=593988801564&text=Necesito%20asesor%C3%ADa%20en%20mi%20compra">
-<p className="titulocontactd"> Chatéanos</p>
+   <a
+  style={{ textDecoration: "none" }}
+  target="_blank"
+  rel="noopener noreferrer"
+  href={`https://api.whatsapp.com/send?phone=${
+    this.props?.datosTienda?.WaNumber
+      ? `593${this.props.datosTienda.WaNumber.replace(/^0+/, "")}`
+      : ""
+  }&text=Necesito%20asesor%C3%ADa%20en%20mi%20compra`}
+>
+  <p className="titulocontactd"> Chatéanos</p>
 <img className="chat" src="/contacto/whatsapplogo.png" alt=""/>
 </a>
   </div>
   <div className="cdoptions">
-  <a style={{textDecoration:"none"}} target=" _blank" href="https://goo.gl/maps/FLenSxtACyAHKesz8">
+  <a style={{textDecoration:"none"}} target=" _blank" href={this.props?.datosTienda?.ubicacionMaps }>
 <p className="titulocontactd"> Visítenos</p>
 <img className="chat" src="/contacto/logomaps.png" alt=""/>
 </a>
@@ -225,8 +237,16 @@ console.log(this.state)
   <div className="cdoptions">
 
 <p className="titulocontactd"> Llámenos</p>
-<a href="tel:0988801564"><p>0988801564</p></a>
-<a href="tel:0988450025"><p>0988450025</p></a>
+<a
+  href={`tel:${
+    this.props?.datosTienda?.WaNumber
+      ? this.props.datosTienda.WaNumber
+      : ""
+  }`}
+>
+  <p>{this.props?.datosTienda?.WaNumber}</p>
+</a>
+
 
 
   </div>
@@ -234,8 +254,11 @@ console.log(this.state)
   <div className="cdoptions">
 
 <p className="titulocontactd"> Escríbanos </p>
-<a href="mailto:dtecnicocelular@gmail.com?Subject=Solicitud%20soporte" target="_top">
-<p>dtecnicocelular@gmail.com</p>
+<a
+  href={`mailto:${this.props?.datosTienda?.correoNotificaciones}?Subject=Solicitud%20soporte`}
+  target="_top"
+>
+  <p>{this.props?.datosTienda?.correoNotificaciones}</p>
 </a>
 
   </div>
@@ -250,7 +273,6 @@ console.log(this.state)
         <Animate show={this.state.pfinal}> 
                  <div className="contPfinal">
                  <i className="icofont-handshake-deal icoIMG"></i>
-                 <p className="subtituloArt">Solicitud creada con exito</p>
                 
               <p>Por favor  {`${this.state.clienteNombre} `} confirma tu número de contacto </p>
               <div className="contDatosC">
@@ -270,7 +292,7 @@ console.log(this.state)
                  
              <div className="PFCbuttons">
                 
-                 <button className=" botonventa botonventa-Enf "onClick={this.onFlechaRetro} > Corregir  </button>
+                 <button className="botonventa secondary" onClick={this.onFlechaRetro} > Corregir  </button>
                  <button className="botonventa" onClick={()=>{this.sendMail(); }} > Continuar  </button>
                  </div>
                  </div>
@@ -287,9 +309,25 @@ console.log(this.state)
                   <div className="urgente">
                   <p>Sientete libre de contactarnos de inmediato</p>
                   <div className="datosFinalescont">
-                  <a href="tel:0988801564"><p>0988801564</p></a>
-                  <a href="mailto:dtecnicocelular@gmail.com?Subject=Hello%20again" target="_top">
-<p>dtecnicocelular@gmail.com</p>
+   <a
+  href={`tel:${
+    this.props?.datosTienda?.WaNumber
+      ? this.props.datosTienda.WaNumber
+      : ""
+  }`}
+>
+  <p>{this.props?.datosTienda?.WaNumber}</p>
+</a>
+
+<a
+  href={`mailto:${
+    this.props?.datosTienda?.correoNotificaciones
+      ? this.props.datosTienda.correoNotificaciones
+      : ""
+  }?Subject=Solicitud%20soporte`}
+  target="_top"
+>
+  <p>{this.props?.datosTienda?.correoNotificaciones}</p>
 </a>
                     </div>
                   </div>
@@ -337,19 +375,36 @@ console.log(this.state)
    }
    .urgente{
     text-align: center;
-    border: 1px outset blue;
+    border: 1px solid rgba(96, 165, 250, 0.3);
     margin-top: 10px;
-    border-radius: 15px;
-    padding: 5px;
+    border-radius: 16px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    box-shadow: 0 6px 16px rgba(30, 58, 138, 0.06);
    }
    .urgente p{
   margin-top:0px;
   margin-bottom:15px;
    }
    .buttonURG{
-     padding:8px;
-     border-radius: 20px;
-     background-color: #e611113d;
+     padding: 8px 16px;
+     border-radius: 16px;
+     background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
+     color: #991b1b;
+     border: 1px solid rgba(239, 68, 68, 0.3);
+     font-weight: 700;
+     font-size: 0.875rem;
+     cursor: pointer;
+     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+     box-shadow: 0 6px 16px rgba(239, 68, 68, 0.08);
+   }
+   .buttonURG:hover {
+     box-shadow: 0 10px 24px rgba(239, 68, 68, 0.12);
+     transform: translateY(-1px);
+   }
+   .buttonURG:active {
+     transform: translateY(0.5px);
+     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.06);
    }
    .icoIMG{
      margin-top:10px;
@@ -365,16 +420,19 @@ console.log(this.state)
   
 }
              .contTituloCont1{
-              margin-top:10px;
-               display:flex;
-               display: flex;
-    font-size: 25px;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    text-align: center;
-    border: 1px solid blue;
-    border-radius: 20px;
+              margin-top: 10px;
+              display: flex;
+              font-size: 20px;
+              justify-content: center;
+              align-items: center;
+              font-weight: 700;
+              text-align: center;
+              border: 1px solid rgba(96, 165, 250, 0.4);
+              border-radius: 22px;
+              background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+              color: #1d4ed8;
+              padding: 12px 16px;
+              box-shadow: 0 6px 16px rgba(30, 58, 138, 0.08);
              }
              .contTituloCont1 p{
                margin-top:5px;
@@ -387,8 +445,16 @@ console.log(this.state)
     margin-left: 4%;
     margin-right: 4%;
     margin-top: 20px;
-    border-bottom: 5px inset black;
-    border-radius: 15px;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cdoptions:hover {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
 }
            .headercontact {
 
@@ -411,35 +477,75 @@ margin: 5px
            }
 
 .asesoriaT{
-  font-size: 20px;
-    text-align: center;
-    margin-top: 10px;
-    border: 1px inset blue;
-    border-radius: 13px;
-    margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  margin-bottom: 10px;
+  padding: 12px 16px;
+  color: #0f172a;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
              .botonventa{
-            
               margin-top: 17px;
-    border-radius: 10px;
-
-    background-color: #048b0b;
-    box-shadow: 0 3px 1px -2px rgba(0,0,0,0.2), 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12);
-    color: #fff;
-    transition: background-color 15ms linear, box-shadow 280ms cubic-bezier(0.4,0,0.2,1);
-    height: 36px;
-    line-height: 2.25rem;
-    font-family: Roboto,sans-serif;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+    box-shadow: 0 6px 16px rgba(22, 101, 52, 0.12);
+    color: #166534;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 40px;
+    line-height: 1;
+    font-family: Roboto, sans-serif;
     font-size: 0.875rem;
-    font-weight: 500;
-    -webkit-letter-spacing: 0.06em;
-    -moz-letter-spacing: 0.06em;
-    -ms-letter-spacing: 0.06em;
-    letter-spacing: 0.06em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    border: none;
+    border: 1px solid rgba(34, 197, 94, 0.3);
     width: 40%;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+             }
+             .botonventa:before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.8);
+             }
+             .botonventa:hover {
+              box-shadow: 0 10px 24px rgba(22, 101, 52, 0.15);
+              transform: translateY(-1px);
+             }
+             .botonventa:active {
+              transform: translateY(0.5px);
+              box-shadow: 0 4px 12px rgba(22, 101, 52, 0.1);
+             }
+             .botonventa.secondary {
+              background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+              color: #1d4ed8;
+              border: 1px solid rgba(96, 165, 250, 0.4);
+              box-shadow: 0 6px 16px rgba(30, 58, 138, 0.12);
+             }
+             .botonventa.secondary:before {
+              background: rgba(255, 255, 255, 0.8);
+             }
+             .botonventa.secondary:hover {
+              box-shadow: 0 10px 24px rgba(30, 58, 138, 0.15);
+              transform: translateY(-1px);
+             }
+             .botonventa.secondary:active {
+              transform: translateY(0.5px);
+              box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
              }
           .contsolicitador{
 
@@ -452,13 +558,13 @@ margin: 5px
           }
           .optionSoporte{
             width: 44%;
-            min-width:180px;
-    box-shadow: 0px 3px 4px black;
-    border-radius: 13px;
+            min-width: 180px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    border-radius: 22px;
     padding-bottom: 5%;
-    padding-top: 10px;
-    padding-left: 5px;
-    padding-right: 5px;
+    padding-top: 16px;
+    padding-left: 8px;
+    padding-right: 8px;
     height: 290px;
     word-break: break-word;
     cursor: pointer;
@@ -466,8 +572,29 @@ margin: 5px
     display: flex;
     justify-content: space-around;
     margin: 14px 0px;
-    border-bottom:2px inset blue;
     align-items: center;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+          }
+          .optionSoporte:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 22px 22px 0 0;
+          }
+          .optionSoporte:hover {
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.12);
+            transform: translateY(-2px);
+          }
+          .optionSoporte:active {
+            transform: translateY(0px);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
           }
           .optionSoporte img {
     width: 100%;
@@ -476,10 +603,11 @@ margin: 5px
         
         .maincontacto{
           z-index: 9999;
-         width: 100vw;
+                width: 100%;
          height: 100vh;
-         background-color: rgba(0, 0, 0, 0.7);
-         left:0px;
+         background-color: rgba(15, 23, 42, 0.52);
+         backdrop-filter: blur(4px);
+         left: 0px;
          position: fixed;
          top: 0px;
          display: flex;
@@ -488,12 +616,12 @@ margin: 5px
          
        }
        .contcontacto{
-        border-radius: 30px;
-     
-         width: 90%;
-         background-color: white;
-      
-       }
+        border-radius: 26px;
+        width: 90%;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 32px 90px rgba(15, 23, 42, 0.22);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+      }
        .marginador{
          margin: 0px 35px 15px 35px;
          color: black;
@@ -566,10 +694,12 @@ margin: 5px
         
 
           .titulocontactd{
-            font-size:23px;
-            font-weight:bolder;
-            color:black;
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
             height: 35%;
+            letter-spacing: 0.03em;
+            text-transform: capitalize;
           }
           .FULL{
                width:60%

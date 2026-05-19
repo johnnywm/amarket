@@ -22,6 +22,7 @@ import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import HomeIcon from '@mui/icons-material/Home';
 import { withRouter } from 'next/router';
+import { config } from 'react-transition-group';
 
 class Contacto extends Component {
   
@@ -63,6 +64,7 @@ class Contacto extends Component {
               registerCard:false,
               estadoPago:"default",
               Coins:0,
+              ValorFinal:this.props.totalPrice,
               pagosDomicilio:false,
               snackerror1:false,
               snackerror2:false,
@@ -405,10 +407,9 @@ console.log(this.state)
     this.setState({compraLoading:true})
 
 
-  let valorTotal  = parseInt(this.props.totalPrice) 
   var url = 'http://localhost:3000/public/ordencompra';
+  let urldeploy = `${process.env.URL_BACKEND_SERVER}/public/ordencompra`;
 
-  var urldeploy = `${process.env.URL_BACKEND_SERVER}/public/ordencompra`;
   var estadodepago = this.state.formadepago === "Tarjeta"?"Pagado":
                       this.state.formadepago === "Coins"?"Pagado": "default"
 
@@ -427,20 +428,27 @@ console.log(this.state)
               TipoEnv:"por generar",
               Envio:this.state.envio,
               ValorEnv:this.state.valorenvio,
-              Valorfinal:valorTotal,
-              EstadoPago:estadodepago,
+              Valorfinal:this.state.ValorFinal,
+              EstadoPago:estadodepago ,
               carrito:this.props.carrito,
               Userdata:{DBname:this.props.tienda.dbName},
               tiempo: new Date().getTime()
               }
+              if(this.state.formadepago === "Transferencia"){
+       data.bancoElegido = {
+  Banco: this.state.bancoSelect.nombre,
+  NumeroCuenta: this.state.bancoSelect.cuenta,
+  TipoCuenta: this.state.bancoSelect.tipo,
+  NombreTitular: this.state.bancoSelect.titular
+};
+                   }
               console.log(data)
               if(this.state.formadepago === "Transferencia-Coins" || this.state.formadepago === "Efectivo-Coins"|| this.state.formadepago === "Coins"){
                
-                let valorTotal  = parseInt(this.props.totalPrice) 
                 var estadodepago = this.state.formadepago === "Tarjeta"?"Pagado":
                                    this.state.formadepago === "Coins"?"Pagado": "default"
                                
-                let CoinsdespuesVal = this.state.Coins - valorTotal
+                let CoinsdespuesVal = this.state.Coins - this.state.ValorFinal
                 let  CoinsDespues = CoinsdespuesVal > 0 ? CoinsdespuesVal:0
                 let CoinsUsadas =  this.state.Coins - CoinsDespues
                 data = {
@@ -458,22 +466,11 @@ console.log(this.state)
                   ValorEnv:this.state.valorenvio,
                   EstadoPago:estadodepago,
                   carrito:this.props.carrito,
-                  Valorfinal:valorTotal,
-                  valoraPagar:valorTotal - this.state.Coins,
-                  CoinsAntes:this.state.Coins,
-                  CoinsDespues,
-                  CoinsUsadas
-                  }
-                  
-             let lolcoins = {
-              Id:this.state.clienteID,
-              Coins:CoinsDespues
-
-             }
+                  Valorfinal:this.state.ValorFinal,
                  
+                  }
 
-                
-
+                  
 
 
                 }
@@ -694,7 +691,9 @@ loginFacebook =(response)=>{
               console.log("dentro de ciudad")
               
           let vEnvio = this.comprobarPrecioEnvio(e.target.value)
-          this.setState({clienteCiudad:e.target.value, valorenvio:vEnvio })
+          this.setState({clienteCiudad:e.target.value, 
+            ValorFinal:this.props.totalPrice + vEnvio,    
+            valorenvio:vEnvio })
             }else{
             this.setState({
               [e.target.name] : e.target.value
@@ -793,12 +792,12 @@ let bankRender = databank.map((bank,i)=>
 
 const comprobadorCoins=()=>{
 
-  let valorTotal = parseInt(this.props.totalPrice) 
-  console.log(this.state.Coins > valorTotal)
+ 
+  console.log(this.state.Coins > this.state.ValorFinal)
   if(this.props.usuario){
 
  
-  if(this.state.Coins > valorTotal){
+  if(this.state.Coins > this.state.ValorFinal){
 
     return( 
 
@@ -1055,7 +1054,7 @@ value={this.state.passReg}
   if(this.state.formadepago === "Transferencia"|| this.state.formadepago === "Transferencia-Coins"){
     
   
-const valorTotal  = parseInt(this.props.totalPrice) 
+
 
 return(
   <div>
@@ -1070,10 +1069,10 @@ return(
 <p>Numero Cuenta : <span style={{fontWeight:"bolder"}}>{this.state.bancoSelect.cuenta}</span></p>
 <p>Tipo de Cuenta: <span style={{fontWeight:"bolder"}}>{this.state.bancoSelect.tipo}</span></p>
 <p>Nombre Titular: <span style={{fontWeight:"bolder"}}>{this.state.bancoSelect.titular}</span></p>
-<p>Un valor de total de : <span style={{fontWeight:"bolder"}}>${valorTotal}</span></p>
+<p>Un valor de total de : <span style={{fontWeight:"bolder"}}>${this.state.ValorFinal}</span></p>
 <p>En el detalle, escriba el número de carrito y su usuario </p>            
 <div className="jwseccionCard jwPaper ">
-   <p style={{textAlign:"center",marginTop:"10px"}}>Envielo via WhatsApp al 0988801564  </p>
+   <p style={{textAlign:"center",marginTop:"10px"}}>Envielo via WhatsApp al {this.props.tienda.WaNumber}  </p>
 </div>
 {this.state.envio && <div> <p>Al recibir la confirmación de la transferencia realizaremos el envío</p></div>}
 {this.state.envio === false && <div>
@@ -1126,24 +1125,30 @@ return(
   </div>   
   <style>
     {`.contDatosBanco{
-      
-      padding: 15px; }
+      padding: 20px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+      color: #334155;
+      font-family: Inter, system-ui, sans-serif;
+    }
    .bold{
-     font-weight:bolder;
+     font-weight: 700;
+     color: #1d4ed8;
    }
-   
     `}
   </style>
   </div>
 )
   }
   else if(this.state.formadepago === "Efectivo"|| this.state.formadepago === "Efectivo-Coins"){
-    const valorTotal  = parseInt(this.props.totalPrice) 
+   
     return(
       <div>
            
           <p>Puede retirarlo a nombre de: <span style={{fontWeight:"bolder"}}>{this.state.clienteNombre}</span> </p>
-          <p>Un valor de total de :<span style={{fontWeight:"bolder"}}>${valorTotal}</span></p>
+          <p>Un valor de total de :<span style={{fontWeight:"bolder"}}>${this.state.ValorFinal}</span></p>
 
 <p>Acercate con tu nombre y número de carrito</p>
                    
@@ -1865,6 +1870,17 @@ this.setTimeout(() => {
              
                </div>
               </div>
+               <div className="contDatosC">
+              <div className="cDc1">
+              <p style={{fontWeight:"bolder"}}>  Valor Producto/s:  </p>
+            
+              </div>
+              <div className="cDc2">
+               
+               <p>{`$${this.props.totalPrice}`}</p>
+             
+               </div>
+              </div>
               
               </Animate>
               
@@ -1909,7 +1925,7 @@ this.setTimeout(() => {
                                 </div>
                                 <div className="cDc2">
                                 
-                                <p>{`$${this.props.totalPrice}`}</p>
+                                <p>{`$${this.state.ValorFinal}`}</p>
                               
                                 </div>
                                 </div>
@@ -1975,7 +1991,7 @@ this.setTimeout(() => {
                    <p className="subtituloArt">Éxito en tu solicitud </p>
                    </div>
                    </div>
-                   <div className="asesoriaT">  Su número de carrito es 
+                   <div style={{marginBottom:"10px"}} className="asesoriaT">  Su número de carrito es 
                    
         <ShoppingCartIcon />
 
@@ -2018,7 +2034,9 @@ this.setTimeout(() => {
                   </Animate>        
                          
              <Animate show={this.state.soporte}>
-          <Soporte flechafun ={this.soporteFlechaFun}/>
+          <Soporte 
+          datosTienda={this.props.tienda}
+          flechafun ={this.soporteFlechaFun}/>
            </Animate>
            <Animate show={this.state.soporteBox}>
            <div className="contSoporte" onClick={this.clickSoporte}> 
@@ -2037,7 +2055,105 @@ this.setTimeout(() => {
           
 
 
-           <style >{`
+           <style jsx>{`
+/* SlatePad — checkout / contacto */
+.maincontacto {
+  --sp-primary: #1d4ed8;
+  --sp-secondary: #38bdf8;
+  --sp-bg: #f8fafc;
+  --sp-bg-alt: #eff6ff;
+  --sp-bg-card: #ffffff;
+  --sp-border: #e2e8f0;
+  --sp-text: #334155;
+  --sp-success: #22c55e;
+  --sp-danger: #991b1b;
+  --sp-shadow: 0 2px 12px rgba(15, 23, 42, 0.10);
+  --sp-shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.12);
+  --sp-radius-sm: 8px;
+  --sp-radius-md: 12px;
+  --sp-radius-lg: 16px;
+  --sp-radius-xl: 20px;
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--sp-text);
+}
+.maincontacto .tituloArt {
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 900;
+  color: var(--sp-text);
+  letter-spacing: -0.02em;
+}
+.maincontacto .subtituloArt {
+  font-weight: 700;
+  color: var(--sp-primary);
+  font-family: Inter, system-ui, sans-serif;
+}
+.maincontacto .textoArt {
+  color: var(--sp-text);
+  font-family: Inter, system-ui, sans-serif;
+}
+.maincontacto .botonGeneral {
+  background: linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--sp-radius-sm);
+  box-shadow: var(--sp-shadow);
+  font-weight: 700;
+  font-family: Inter, system-ui, sans-serif;
+  transition: box-shadow 0.18s ease, transform 0.15s ease;
+}
+.maincontacto .botonGeneral:hover {
+  color: #fff;
+  box-shadow: var(--sp-shadow-lg);
+  transform: translateY(-1px);
+}
+.maincontacto .jwseccionCard {
+  width: 100%;
+  max-width: 420px;
+}
+.maincontacto .jwminiCard-v2 {
+  background: var(--sp-bg-card);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius-md);
+  box-shadow: var(--sp-shadow);
+  padding: 12px 16px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.maincontacto .jwminiCard-v2:hover {
+  border-color: var(--sp-secondary);
+  box-shadow: var(--sp-shadow-lg);
+}
+.maincontacto .gradient-border {
+  background: #fff;
+  border-radius: var(--sp-radius-md);
+  box-shadow: var(--sp-shadow);
+}
+.maincontacto .gradient-border:after {
+  background: linear-gradient(135deg, #1d4ed8, #38bdf8);
+  animation: none;
+  background-size: 100% 100%;
+}
+.maincontacto .boxinside {
+  background: var(--sp-bg);
+  border-radius: 10px;
+  color: var(--sp-text);
+}
+.maincontacto .btn-primary {
+  background: linear-gradient(135deg, #1d4ed8, #38bdf8) !important;
+  border: none !important;
+  border-radius: var(--sp-radius-sm) !important;
+  font-weight: 700;
+  font-family: Inter, system-ui, sans-serif;
+  box-shadow: var(--sp-shadow);
+  padding: 10px 20px;
+}
+.maincontacto .btn-success {
+  background: var(--sp-success) !important;
+  border: none !important;
+  border-radius: var(--sp-radius-sm) !important;
+  font-weight: 700;
+  font-family: Inter, system-ui, sans-serif;
+  box-shadow: var(--sp-shadow);
+}
 .contBotonPago{
   width: 150px;
 }
@@ -2053,10 +2169,12 @@ this.setTimeout(() => {
     margin: 15px;
            }
            .numeromoneda{
-            font-family: monospace;
+            font-family: Inter, system-ui, sans-serif;
           display: flex;
           align-items: center;
-          font-size: 50px;
+          font-size: 2.5rem;
+          font-weight: 900;
+          color: #1d4ed8;
           }
            .moneda{
             width: 57%;
@@ -2064,34 +2182,47 @@ this.setTimeout(() => {
             height: autos;
           }
           .saldo{
-            border: 3px solid lightblue;
-    padding: 7px;
-    border-radius: 15px;
+            border: 1px solid #dbeafe;
+            background: #eff6ff;
+    padding: 12px 16px;
+    border-radius: 12px;
     text-align: center;
-    font-size: 21px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #334155;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.08);
           }
            .CoinCont{
-            padding: 10px;
+            padding: 14px 18px;
             display: flex;
-            border: 4px double #c5b819e3;
-            border-radius: 17px;
+            border: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+            border-radius: 16px;
             justify-content: space-around;
             align-items: center;
             text-align: center;
             width: 80%;
-            max-width: 150px;
+            max-width: 180px;
+            box-shadow: 0 2px 12px rgba(15,23,42,0.10);
             }
            .sinancho{
             width:none
            }
              .custombackground{
-              background-color: #418fe2;
+              background: linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%);
+              border-radius: 12px;
+              box-shadow: 0 2px 12px rgba(15,23,42,0.10);
              }
            .registerbutton{
-            color: blue;
+            color: #1d4ed8;
             margin-top: 50px;
-            text-decoration: underline;
+            text-decoration: none;
+            font-weight: 700;
             cursor:pointer;
+            transition: color 0.15s ease;
+           }
+           .registerbutton:hover{
+            color: #38bdf8;
            }
 
 .imagenboton{
@@ -2103,10 +2234,12 @@ this.setTimeout(() => {
     justify-content: center;
     font-size: 12px;
     font-style: italic;
-    border: 1px outset aliceblue;
-    border-radius: 16px;
-    padding: 2px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 8px 12px;
     margin-bottom: 10px;
+    color: #334155;
 }
              
              .consumidor p{
@@ -2121,9 +2254,11 @@ this.setTimeout(() => {
     flex-flow: column;
     justify-content: center;
     align-items: center;
-    background-color: honeydew;
-    padding: 20px;
-    border-radius: 15px;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.10);
 }
             .contLogin{
               display: flex;
@@ -2131,10 +2266,12 @@ this.setTimeout(() => {
     flex-flow: column;
     align-items: center;
     text-align: center;
-    background-color: honeydew;
-    padding: 20px 0px;
-    border-radius: 20px;
-    margin: 10px 0px;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    padding: 24px 16px;
+    border-radius: 16px;
+    margin: 12px 0px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.08);
             }
          
 .minimensaje{
@@ -2150,27 +2287,27 @@ this.setTimeout(() => {
              }
              .contSoporte{  
             cursor:pointer;
- margin-top:5vw;
-    border: 2px outset #75c1ff;
+ margin-top:15px;
+    border: 1px solid #dbeafe;
+    background: #fff;
     display: flex;
-
     align-items: center;
- 
-    justify-content: center;
-    border-radius: 12px;
-    box-shadow: 3px 3px 12px black;
-     
-    align-items: center;
-    align-content: space-around;
     justify-content: space-evenly;
-    padding: 0px 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+    padding: 12px 16px;
     text-align: center;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease;
+             }
+             .contSoporte:hover{
+               border-color: #38bdf8;
+               box-shadow: 0 8px 32px rgba(15,23,42,0.12);
              }
              .textoSoporte{
 margin-bottom:0px;
              }
              .soportetec{
-               width: 20%;
+               width: 10%;
              }
              .contPfinal{
               display: flex;
@@ -2197,38 +2334,44 @@ margin-bottom:0px;
    }
    .urgente{
     text-align: center;
-    border: 1px outset blue;
+    border: 1px solid #dbeafe;
+    background: #eff6ff;
     margin-top: 10px;
-    border-radius: 15px;
-    padding: 5px;
+    border-radius: 12px;
+    padding: 12px;
+    color: #334155;
    }
    .urgente p{
   margin-top:0px;
   margin-bottom:15px;
    }
    .buttonURG{
-     padding:8px;
-     border-radius: 20px;
-     background-color: #e611113d;
+     padding: 8px 18px;
+     border-radius: 10px;
+     background: #991b1b;
+     color: #fff;
+     font-weight: 700;
+     border: none;
+     box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+     transition: box-shadow 0.18s ease;
+   }
+   .buttonURG:hover{
+     box-shadow: 0 8px 32px rgba(15,23,42,0.15);
    }
    .icoIMG{
      margin-top:10px;
      font-size:100px;
    }
    .contDatosC{
-    padding: 0px;
-   
     display: flex;
     width: 100%;
-
-
-    background-color: #bdbdbd;
-    border-radius: 15px;
-    margin: 5px 0px;
- 
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 8px 0px;
     align-items: center;
-  
-    padding: 17px 8px 2px 8px;
+    padding: 16px 14px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.06);
    }
 .cDc1{
   width: 50%;
@@ -2236,18 +2379,20 @@ margin-bottom:0px;
   
 }
              .contTituloCont1{
-              margin-top:10px;
-               display:flex;
-               display: flex;
-    font-size: 25px;
+              margin-top: 10px;
+    display: flex;
+    font-size: 1.25rem;
     justify-content: center;
     align-items: center;
-    font-weight: bold;
+    font-weight: 900;
     text-align: center;
-
-    border-radius: 15px;
-    
-    padding: 9px;
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-family: Inter, system-ui, sans-serif;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.06);
              }
              .contTituloCont1 p{
                margin-top:5px;
@@ -2260,8 +2405,15 @@ margin-bottom:0px;
     margin-left: 4%;
     margin-right: 4%;
     margin-top: 20px;
-    border-bottom: 5px inset #ddba65;
-    border-radius: 15px;
+    border-bottom: 3px solid #1d4ed8;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.08);
+    transition: box-shadow 0.18s ease, transform 0.15s ease;
+}
+.cdoptions:hover{
+  box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+  transform: translateY(-2px);
 }
 
            .headercontact {
@@ -2287,38 +2439,63 @@ margin: 5px
            }
 
 .asesoriaT{
-  font-size: 20px;
+  font-size: 1rem;
     text-align: center;
     margin-top: 10px;
-    
-    border-radius: 13px;
-    margin-bottom: 0px;
-    padding: 5px;
-    background-color: aliceblue;
-    box-shadow: 0px 1px 1px black;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    padding: 12px 16px;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #334155;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.06);
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 500;
 }
 
              .botonventa{
-            
               margin-top: 17px;
     border-radius: 10px;
-
-    background-color: #048b0b;
-    box-shadow: 0 3px 1px -2px rgba(0,0,0,0.2), 0 2px 2px 0 rgba(0,0,0,0.14), 0 1px 5px 0 rgba(0,0,0,0.12);
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    box-shadow: 0 2px 12px rgba(15,23,42,0.12);
     color: #fff;
-    transition: background-color 15ms linear, box-shadow 280ms cubic-bezier(0.4,0,0.2,1);
-    height: 36px;
+    transition: box-shadow 0.18s ease, transform 0.15s ease;
+    height: 40px;
     line-height: 2.25rem;
-    font-family: Roboto,sans-serif;
-    font-size: 0.875rem;
-    font-weight: 500;
-    -webkit-letter-spacing: 0.06em;
-    -moz-letter-spacing: 0.06em;
-    -ms-letter-spacing: 0.06em;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
     border: none;
     width: 40%;
+    cursor: pointer;
+             }
+             .botonventa:hover{
+               box-shadow: 0 8px 32px rgba(15,23,42,0.15);
+               transform: translateY(-1px);
+             }
+             .botonventaalt{
+              margin-top: 15px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%);
+    box-shadow: 0 2px 12px rgba(15,23,42,0.12);
+    color: #fff;
+    transition: box-shadow 0.18s ease, transform 0.15s ease;
+    line-height: 1.25rem;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    border: none;
+    border-radius: 10px;
+    width: 40%;
+    cursor: pointer;
+    padding: 8px 18px;
+             }
+             .botonventaalt:hover{
+               box-shadow: 0 8px 32px rgba(15,23,42,0.15);
+               transform: translateY(-1px);
              }
              .subContactCont {
                margin:10px 0px
@@ -2329,7 +2506,7 @@ margin-top:10px
 }
           .contsolicitador{
          
-            margin-bottom: 10%;
+           
             display:flex;
             width:100%;
             align-items: center;
@@ -2340,18 +2517,27 @@ margin-top:10px
           }
           .option{
             width: 45%;
-    box-shadow: 0px 3px 4px black;
-    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
     padding-bottom: 5%;
-    padding-top: 10px;
-    padding-left: 5px;
-    padding-right: 5px;
-    height: 250px;
+    padding-top: 14px;
+    padding-left: 8px;
+    padding-right: 8px;
+    height: 220px;
     word-break: break-word;
     cursor:pointer;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+          }
+          .option:hover{
+            border-color: #38bdf8;
+            box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+            transform: translateY(-2px);
           }
           .optionBank img{
-            width:70%;
+            width: 50%;
+            border-radius: 20px;
             max-width:120px;
           }
           .option img{
@@ -2361,30 +2547,45 @@ margin-top:10px
           .option3{
             margin-bottom: 20px;
     width: 135px;
-    box-shadow: 0px 3px 4px black;
-    border-radius: 13px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
     padding-bottom: 5%;
-    padding-top: 10px;
-    padding-left: 5px;
-    padding-right: 5px;
+    padding-top: 14px;
+    padding-left: 8px;
+    padding-right: 8px;
     margin: 5px 2vw 5vw 5px;
     height: 230px;
     word-break: break-word;
     cursor:pointer;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+}
+.option3:hover{
+  border-color: #38bdf8;
+  box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+  transform: translateY(-2px);
 }
 .optionBank{
   width: 30%;
-  box-shadow: 0px 3px 4px black;
-  border-radius: 13px;
-
-  height: 250px;
+  box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  height: 200px;
   word-break: break-word;
   cursor: pointer;
-  margin:20px
+  margin: 20px;
   display: flex;
   flex-flow: column;
   align-items: center;
   justify-content: center;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+}
+.optionBank:hover{
+  border-color: #1d4ed8;
+  box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+  transform: translateY(-2px);
 }
 
 .option3 img{
@@ -2394,44 +2595,46 @@ margin-top:10px
       
         
         .maincontacto{
-          overflow:scroll;
+          overflow: scroll;
           z-index: 9999;
          width: 100%;
          height: 100%;
-         background-color: rgba(0, 0, 0, 0.7);
-         left:0px;
+         background-color: rgba(15, 23, 42, 0.55);
+         backdrop-filter: blur(4px);
+         left: 0px;
          position: fixed;
          top: 0px;
          display: flex;
          justify-content: center;
          align-items: center;
-         
        }
        .contcontacto{
-         position:absolute;
-         top:5%;
-        border-radius: 30px;
+         position: absolute;
+         top: 5%;
+        border-radius: 20px;
         margin-bottom: 5%;
          width: 90%;
-         background-color: white;
-      
+         max-width: 720px;
+         background: #ffffff;
+         box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+         border: 1px solid #e2e8f0;
        }
        .marginador{
-         margin: 0px 15px 15px 15px;
-         color: black;
-         
+         margin: 0px 16px 20px 16px;
+         color: #334155;
          display: flex;
          flex-flow: column;
          align-items: center;
-   
        }
    
        .asesort{
         margin-top: 20px;
-  
          text-align: center;
-         font-size: 20px;
+         font-size: 1.1rem;
+         font-weight: 700;
+         color: #334155;
          margin-bottom: 0;
+         font-family: Inter, system-ui, sans-serif;
        }
        .engrane{
          height: 75px;
@@ -2447,10 +2650,11 @@ margin-top:10px
        .tituloventa{
          display: flex;
          align-items: center;
-         font-size: 30px;
-         font-weight: bolder;
+         font-size: 1.35rem;
+         font-weight: 900;
          text-align: center;
-   
+         color: #334155;
+         font-family: Inter, system-ui, sans-serif;
        }
        .tituloventa p{
          margin-top:5px;
@@ -2460,7 +2664,16 @@ margin-top:10px
        .flecharetro{
          height: 40px;
          width: 40px;
-         padding: 5px;
+         padding: 8px;
+         border-radius: 10px;
+         background: #f8fafc;
+         border: 1px solid #e2e8f0;
+         transition: background 0.15s ease, box-shadow 0.18s ease;
+         cursor: pointer;
+       }
+       .flecharetro:hover{
+         background: #eff6ff;
+         box-shadow: 0 2px 12px rgba(15,23,42,0.10);
        }
           
        body {
@@ -2492,18 +2705,24 @@ margin-top:10px
   justify-content: center;
 }
           .titulocontactd{
-            font-size:20px;
-            font-weight:bolder;
-            color:black;
-            height: 35%;
-            margin: 5px 0px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1d4ed8;
+            height: 25%;
+         
+            font-family: Inter, system-ui, sans-serif;
           }
          
              .imgEnf img{
                 max-width:250px;
               }
-              .botonventa-Enf{
-               background-color:rgb(65, 143, 226);
+              .botonventa-Enf,
+              .imgEnf{
+               border-color: #1d4ed8 !important;
+               box-shadow: 0 8px 32px rgba(29, 78, 216, 0.2) !important;
+             }
+             .optionBank.imgEnf{
+               background: linear-gradient(180deg, #eff6ff 0%, #fff 100%);
              }
              .sinmargen{
               margin:0;
@@ -2536,16 +2755,33 @@ margin-top:10px
                
              }
              .contactcont{
-   height:100%;
-   background-color: white;
+   height: 100%;
+   background: #fff;
+   border: 1px solid #e2e8f0;
+   border-radius: 12px;
    display: flex;
     flex-flow: column;
     align-items: center;
     justify-content: space-evenly;
     width: 45%;
+    padding: 12px;
+    box-shadow: 0 2px 12px rgba(15,23,42,0.06);
 }
              .jwBolder{
-               font-weight:bolder;
+               font-weight: 700;
+               color: #334155;
+             }
+             .maincontacto .logFacebook{
+               border-radius: 12px;
+               box-shadow: 0 2px 12px rgba(15,23,42,0.10);
+               transition: box-shadow 0.18s ease;
+             }
+             .maincontacto .logFacebook:hover{
+               box-shadow: 0 8px 32px rgba(15,23,42,0.12);
+             }
+             .maincontacto .customInput input,
+             .maincontacto .MuiInput-root{
+               font-family: Inter, system-ui, sans-serif;
              }
 
              @media only screen and (max-width: 320px) { 
@@ -2566,7 +2802,7 @@ margin-top:10px
           @media only screen and (min-width: 600px) { 
             
             .soportetec{
-               width: 15%;
+               width: 8%;
              }
             
 
@@ -2580,7 +2816,7 @@ margin-top:10px
           @media only screen and (min-width: 950px) { 
          
             .soportetec{
-               width: 15%;
+               width: 10%;
              }
             
               

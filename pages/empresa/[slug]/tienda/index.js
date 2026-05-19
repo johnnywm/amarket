@@ -15,10 +15,14 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import Link from 'next/link';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import {uploadeFilterSeacher, removeFilterSearcher} from "../../../../reduxstore/actions/myact";
+import Autosuggest from '../../../../components/suggesters/jwsuggest-tienda';
+
 // Material UI Tabs
 import { Tabs, Tab, Box } from '@mui/material';
 import ProductTabCard from '../../../../components/reusable/ProductTabCard';
 import { setTiendaConfig, clearTiendaConfig } from '../../../../reduxstore/actions/tiendaConfig';
+import { loadFromLocalStorage } from '../../../_app';
 import dynamic from 'next/dynamic';
 const CartPanel = dynamic(() => import('../../../../components/CartPanel'), { ssr: false });
 
@@ -29,6 +33,7 @@ class TiendaEmpresa extends React.Component {
     loading: true,
     error: null,
     mounted: false,
+    valor:"",
     selectedTab: 0,
     isMobile: false,
     config: {
@@ -51,6 +56,7 @@ class TiendaEmpresa extends React.Component {
       }
     },
     showCartPanel: false,
+    loadingtienda: false,
     // Snackbar dinámico
     snackOpen: false,
     snackMessage: '',
@@ -58,21 +64,34 @@ class TiendaEmpresa extends React.Component {
     // Vista de Grupo
     groupViewOpen: false,
     activeGrupo: null,
+    groupViewClosing: false,
+    // Vista de Categoría
+    categoryViewOpen: false,
+    activeCategory: null,
+    categoryViewClosing: false,
   };
 
   componentDidMount() {
-    console.log(this.props)
-    if(this.props.state.shop.cart.length > 0) {
+    
+    // Mostrar carrito si existen productos
+    if (this.props.state.shop.cart.length > 0) {
       this.setState({ showCartPanel: true });
     }
-    this.setState({ 
+  
+    // Estado inicial
+    this.setState({
       mounted: true,
-      isMobile: window.innerWidth <= 768 
+      isMobile: window.innerWidth <= 768
     });
+  
+    // Obtener parámetros de la empresa
     this.obtenerParametroEmpresa();
+  
     console.log('Router en componentDidMount:');
+  
     // Listener para cambios de tamaño de pantalla
     window.addEventListener('resize', this.handleResize);
+  
     // Solo limpiar si el usuario cierra el navegador completamente
     window.addEventListener('unload', this.handleUnload);
   }
@@ -110,111 +129,259 @@ class TiendaEmpresa extends React.Component {
   handleGrupoClick = (grupo) => {
     try {
       const nombre = (grupo && (grupo.titulo || grupo.nombre || grupo.name)) ? (grupo.titulo || grupo.nombre || grupo.name) : '';
-      this.setState({ groupViewOpen: true, activeGrupo: nombre });
+      this.setState({ groupViewOpen: true, activeGrupo: nombre, categoryViewOpen: false, activeCategory: null });
+      // Scroll suave hasta el contenedor de la vista de grupo
+      setTimeout(() => {
+        const el = document.querySelector('.grupo-view-container');
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch (e) {
       this.setState({ groupViewOpen: true, activeGrupo: '' });
     }
   }
 
   handleCloseGroupView = () => {
-    this.setState({ groupViewOpen: false, activeGrupo: null });
-    // Opcional: scroll back to groups section
-    try {
-      const el = document.querySelector('.grupos-container');
-      if (el && typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } catch (_) {}
+    this.setState({ groupViewClosing: true });
+    setTimeout(() => {
+      this.setState({ groupViewOpen: false, activeGrupo: null, groupViewClosing: false });
+      try {
+        const el = document.querySelector('.grupos-container');
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } catch (_) {}
+    }, 340);
   }
+
+  // Abrir/cerrar vista de Categoría (similar a grupo pero filtra por categoría)
+  handleCategoriaClick = (cat) => {
+    try {
+      const nombre = (cat && cat.nombreCat) ? cat.nombreCat : '';
+      this.setState({ categoryViewOpen: true, activeCategory: nombre, groupViewOpen: false, activeGrupo: null });
+      // Scroll suave hasta el contenedor de la vista de categoría
+      setTimeout(() => {
+        const el = document.querySelector('.grupo-view-container');
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } catch (e) {
+      this.setState({ categoryViewOpen: true, activeCategory: '' });
+    }
+  }
+
+  handleCloseCategoryView = () => {
+    this.setState({ categoryViewClosing: true });
+    setTimeout(() => {
+      this.setState({ categoryViewOpen: false, activeCategory: null, categoryViewClosing: false });
+      try {
+        const el = document.querySelector('.categorias-productos-container');
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } catch (_) {}
+    }, 340);
+  }
+  getAutoValue=(valor)=>{
+        
+     this.setState(    {valor})
+    
+     if(valor === ""){
+              
+      this.props.dispatch(removeFilterSearcher())
+  }
+           
+       }
+        getClick=(e)=>{
+       
+            //   this.props.dispatch(resetFilters())
+             var padre = document.getElementById("padre")
+        
+             var field = document.createElement('input');
+            
+           field.setAttribute('type', 'text');
+           field.setAttribute('style', 'height: 0px; width: 0px;');
+           setTimeout(()=> {
+               field.focus();
+               
+               setTimeout(()=> {
+               field.setAttribute('style', 'display:none;');
+              
+               }, 50);
+               }, 50);
+        
+          
+           padre.insertBefore(field, null)
+           setTimeout(()=> {
+               field.focus();
+               
+               setTimeout(()=> {
+            
+              
+               }, 50);
+               }, 50);
+               this.props.dispatch(uploadeFilterSeacher(e))
+            
+             }
+               resetPagination=()=>{
+        this.setState({   currentPage: 1})
+    }
+
+  getCachedTiendaConfig = (slug) => {
+    if (!slug) return null;
+    const fromRedux = this.props.state?.tiendaConfig?.tiendas?.[slug];
+    if (fromRedux) return fromRedux;
+    if (typeof window === 'undefined') return null;
+    const persisted = loadFromLocalStorage();
+    return persisted?.tiendaConfig?.tiendas?.[slug] || null;
+  };
+
+  syncShopProductsFromConfig = (config) => {
+    try {
+      const cats = Array.isArray(config?.categoriasPrincipales) ? config.categoriasPrincipales : [];
+      const allArts = cats.reduce((acc, cat) => {
+        const arts = Array.isArray(cat?.articulos) ? cat.articulos : [];
+        arts.forEach((a) => {
+          if (!a || !a._id) return;
+          if (!acc.some((x) => x && x._id === a._id)) acc.push(a);
+        });
+        return acc;
+      }, []);
+      this.props.dispatch({
+        type: 'SET_SHOP_PRODUCTS',
+        payload: Array.isArray(allArts) && allArts.length ? allArts : [],
+      });
+    } catch (e) {
+      this.props.dispatch({ type: 'SET_SHOP_PRODUCTS', payload: [] });
+    }
+  };
+
+  applyTiendaConfig = (slug, config) => {
+    const { dispatch } = this.props;
+    this.setState({ empresa: slug, config, loading: false, error: null });
+    if (dispatch) {
+      dispatch(setTiendaConfig(slug, config));
+      this.syncShopProductsFromConfig(config);
+    }
+  };
 
   obtenerParametroEmpresa = () => {
-
-    const {  tiendaConfig, dispatch } = this.props.state;
+    const { dispatch } = this.props;
     const { slug } = this.props.router.query;
-    if (slug) {
-      if (tiendaConfig && tiendaConfig.tiendas && tiendaConfig.tiendas[slug]) {
-     
-        this.setState({ empresa: slug, config: tiendaConfig.tiendas[slug], loading: false });
-      } else {
-         this.setState({ empresa: slug })
-          this.fetchDatosTienda(slug, dispatch);
-        
-      }
+    if (!slug) return;
+    if (this._tiendaLoadedSlug === slug) return;
+
+    const cached = this.getCachedTiendaConfig(slug);
+    if (cached) {
+      this.applyTiendaConfig(slug, cached);
+      this._tiendaLoadedSlug = slug;
+      return;
     }
-  }
+
+    if (this._tiendaFetchSlug === slug) return;
+    this._tiendaFetchSlug = slug;
+    this.setState({ empresa: slug });
+    this.fetchDatosTienda(slug, dispatch);
+  };
 
   componentDidUpdate(prevProps) {
-    // Detectar cambios en el parámetro de la URL
-    if (prevProps.router.query.slug !== this.props.router.query.slug) {
+    const prevSlug = prevProps.router.query.slug;
+    const slug = this.props.router.query.slug;
+    if (!slug) return;
+
+    if (!prevSlug) {
+      if (this._tiendaLoadedSlug === slug || this._tiendaFetchSlug === slug) return;
       this.obtenerParametroEmpresa();
+      return;
     }
+
+    if (prevSlug === slug) return;
+    this._tiendaLoadedSlug = null;
+    this._tiendaFetchSlug = null;
+    this.obtenerParametroEmpresa();
   }
 
   handleTabChange = (event, newValue) => {
     this.setState({ selectedTab: newValue });
   }
 
-  fetchDatosTienda = async (empresaSlug, dispatch) => {
-    this.setState({ loading: true, error: null });
+  fetchDatosTienda = async (empresaSlug, dispatch, { force = false } = {}) => {
+    if (this.state.loadingtienda) return;
+    if (force) {
+      this._tiendaLoadedSlug = null;
+      this._tiendaFetchSlug = null;
+    }
+    this.setState({ loading: true, loadingtienda: true, error: null });
     try {
       const requestBody = { Empresa: empresaSlug };
       let urlLocal = 'http://localhost:3000/public/tienda/clientRequestTienda';
-      const response = await fetch(`${urlLocal}`, {
+    let urlProd = process.env.NEXT_PUBLIC_PROD_URL + '/public/tienda/clientRequestTienda';
+    console.log('Enviando solicitud a:', urlProd);
+      const response = await fetch(`${urlProd}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
+      console.log('Respuesta del servidor:', response);
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
       }
       const data = await response.json();
       console.log('Datos de la tienda cargados:', data);
-      this.setState({ config: data.config, loading: false });
       if (dispatch) {
-        dispatch(setTiendaConfig(empresaSlug, data.config));
-        // Extraer todos los artículos de todas las categorías y guardarlos en shop.products
-        try {
-          const cats = Array.isArray(data?.config?.categoriasPrincipales) ? data.config.categoriasPrincipales : [];
-          const allArts = cats.reduce((acc, cat) => {
-            const arts = Array.isArray(cat?.articulos) ? cat.articulos : [];
-            // Evitar duplicados por _id
-            arts.forEach(a => {
-              if (!a || !a._id) return;
-              if (!acc.some(x => x && x._id === a._id)) acc.push(a);
-            });
-            return acc;
-          }, []);
-          if (Array.isArray(allArts) && allArts.length) {
-            this.props.dispatch({ type: 'SET_SHOP_PRODUCTS', payload: allArts });
-          } else {
-            this.props.dispatch({ type: 'SET_SHOP_PRODUCTS', payload: [] });
-          }
-        } catch (e) {
-          this.props.dispatch({ type: 'SET_SHOP_PRODUCTS', payload: [] });
-        }
-
+        this.applyTiendaConfig(empresaSlug, data.config);
+      } else {
+        this.setState({ config: data.config, loading: false });
       }
+      this._tiendaLoadedSlug = empresaSlug;
+      this.setState({ loadingtienda: false });
     } catch (error) {
       console.error('Error al cargar datos de la tienda:', error);
-      this.setState({ error: error.message, loading: false });
+      this._tiendaFetchSlug = null;
+      this.setState({ error: error.message, loading: false, loadingtienda: false });
     }
   }
 
   // Función para determinar si un color es claro u oscuro
   isColorLight = (color) => {
-    // Remover el # si está presente
-    const hex = color.replace('#', '');
-    
-    // Convertir a RGB
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    // Calcular la luminosidad usando la fórmula estándar
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    
-    return luminance > 0.5;
+  let r, g, b;
+
+  // Soporta formato HEX (#3692e7 o #39e)
+  if (color.startsWith("#")) {
+    let hex = color.replace("#", "");
+
+    // Convertir formato corto (#39e) a formato completo (#3399ee)
+    if (hex.length === 3) {
+      hex = hex
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
   }
+
+  // Soporta formato rgb(...) y rgba(...)
+  else if (color.startsWith("rgb")) {
+    const values = color.match(/\d+/g).map(Number);
+    [r, g, b] = values;
+  }
+
+  // Si no reconoce el formato, asumir oscuro
+  else {
+    return false;
+  }
+
+  // Calcular luminancia perceptual
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+  // Si la luminancia es mayor a 186, el color es claro
+  return luminance > 186;
+};
 
   handleErrors = (response) => {
     if (!response.ok) {
@@ -281,21 +448,74 @@ class TiendaEmpresa extends React.Component {
     // Obtener color dinámico y determinar si es claro u oscuro
     const colorPrimario = config.colorPrimario || '#ff004c';
     const isLightColor = this.isColorLight(colorPrimario);
+   const descripcion =
+      config?.descripcion || "Tienda en línea";
+      console.log()
     const textColor = isLightColor ? '#000000' : '#ffffff';
-
+  const nombreTienda =
+      config?.nombreTienda || "Mi Tienda";
     if (!mounted) {
       return null; // Evitar hydration mismatch
     }
+     const favicon =
+      config?.favicon ||
+      "/favicon.ico";
 
     return (
       <>
         <Head>
-          <title>{`Tienda ${empresa} - ${DEFAULT_SEO.title}`}</title>
-          <meta 
-            name="description" 
-            content={`Productos y repuestos de ${empresa} - ${DEFAULT_SEO.description}`} 
-          />
+       <title key="title">{descripcion}</title>
+       
+          <meta
+          key="description"
+          name="description"
+          content={descripcion}
+        />
           <meta name="theme-color" content={colorPrimario} />
+       
+         <link
+          rel="apple-touch-icon"
+          href={favicon}
+        />
+
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href={favicon}
+        />
+
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="192x192"
+          href={favicon}
+        />
+
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href={favicon}
+        />
+
+        <link
+          rel="icon"
+          href={favicon}
+        />
+
+        <link
+          rel="shortcut icon"
+          href={favicon}
+        />
+
+        <link
+          rel="mask-icon"
+          href={favicon}
+          color="#5bbad5"
+        />
+       
+       
         </Head>
 
         <div style={{overflowX: 'hidden'}}>
@@ -307,26 +527,37 @@ class TiendaEmpresa extends React.Component {
          <img style={{maxWidth:"250px"}} src={this.state.config.logoTiendaPreview} alt={this.state.config.nombreTienda} />
       
           <div className="search-header-icons">
-             <button className="icon-button" onClick={() => this.fetchDatosTienda(this.state.empresa, this.props.dispatch)} title="Actualizar tienda">
+             <button
+               className={`icon-button${this.state.loadingtienda ? ' loading-refresh' : ''}`}
+               onClick={() => this.fetchDatosTienda(this.state.empresa, this.props.dispatch, { force: true })}
+               title="Actualizar tienda"
+               disabled={this.state.loadingtienda}
+             >
               <RefreshIcon />
             </button>
-            <button className="icon-button">
-              <NotificationsIcon />
-            </button>
+            
            
-            <button className="icon-button cart-button" >
+            <button className="icon-button cart-button" onClick={this.handleShowCartPanel}>
               <ShoppingCartIcon />
-              <span className="cart-badge">1</span>
+              <span className="cart-badge">{(this.props.state?.shop?.cart || []).length}</span>
             </button>
           </div>
         </div>
-
+<div id="padre" style={{display:"flex", justifyContent:"flex-end"}} >
+             
+                </div>
         <div className="search-header-input-wrapper">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Buscador de productos"
-          />
+      
+            <Autosuggest  
+                        remove ={()=>{
+                            this.props.dispatch(removeFilterSearcher())
+                        }}
+                        value ={this.state.valor}
+                        empresa={empresa}
+                        sendClick={this.getClick}
+                        resetPagination={this.resetPagination}
+                        getvalue={(item)=>{this.getAutoValue(item)}} 
+                         modelos={this.props.state.shop.products }  />
           <button className="search-button">
             <SearchIcon />
           </button>
@@ -338,286 +569,319 @@ class TiendaEmpresa extends React.Component {
     {/* Sección de Grupos */}
     <div className="grupos-container">
       
-      {/* Grupos Principales (Primeros 2) */}
-      <div className="grupos-principales">
-        {config.grupos && config.grupos.slice(0, 2).map((grupo, index) => (
-          <div key={grupo.id || index} className="grupo-principal-card" onClick={() => this.handleGrupoClick(grupo)}>
-            <div className="grupo-imagen-container">
-              <img 
-                src={grupo.icono} 
-                alt={grupo.titulo}
-                className="grupo-imagen"
-                onError={(e) => {
-                  e.target.src = '/static/placeholder-image.png';
-                }}
-              />
-            </div>
-            <div className="grupo-titulo">
-              {grupo.titulo}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Grupos Secundarios (Resto) con Tabs si hay más de 3 */}
-      <div className="grupos-secundarios">
-        {config.grupos && config.grupos.length > 2 && (
-          config.grupos.slice(2).length > 3 ? (
-            <Box sx={{ 
-              width: '100%',
-              justifyContent: 'space-around',
-              display: 'flex',
-              '& .MuiTabs-root': {
-                minHeight: '48px'
-              },
-              '& .MuiTabs-scrollButtons': {
-                '&.Mui-disabled': {
-                  opacity: 0.3
-                }
-              }
-            }}>
-              <Tabs
-                variant="scrollable"
-                scrollButtons={true}
-                allowScrollButtonsMobile={true}
-                value={this.state.selectedTab}
-                onChange={this.handleTabChange}
-                aria-label="grupos secundarios"
-                sx={{
-                  '& .MuiTabs-indicator': {
-                    backgroundColor: colorPrimario,
-                  },
-                  '& .MuiTab-root': {
-                    minWidth: 'auto',
-                    padding: '8px 12px',
-                    opacity: 1,
-                    '&:hover': {
-                      opacity: 1,
-                    },
-                    '&.Mui-selected': {
-                      opacity: 1,
-                    },
-                    '&.Mui-focusVisible': {
-                      opacity: 1,
-                    },
-                    '& img': {
-                      opacity: 1,
-                      filter: 'none',
-                    },
-                    '& div': {
-                      opacity: 1,
-                    }
-                  },
-                  // Media queries para desktop - estilo grupo 1
-                  '@media (min-width: 769px)': {
-                    '& .MuiTab-root': {
-                      background: 'white !important',
-                      borderRadius: '20px !important',
-                      margin: '0 8px !important',
-                      padding: '0 !important',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08) !important',
-                      overflow: 'hidden !important',
-                      position: 'relative !important',
-                      minHeight: 'auto !important',
-                      display: 'flex !important',
-                      flexDirection: 'column !important',
-                      alignItems: 'center !important',
-                      textAlign: 'center !important',
-                      cursor: 'pointer !important',
-                      flex: '1 !important',
-                      maxWidth: '200px !important',
-                      minWidth: '200px !important',
-                      height: '200px !important',
-                     
-                    },
-                    '& .MuiTabs-indicator': {
-                      display: 'none !important',
-                    },
-                    // Hacer las imágenes grandes y anchas como grupo 1
-                    '& .grupo-imagen-container-small': {
-                      width: '100% !important',
-                      height: '150px !important',
-                      maxWidth: 'none !important',
-                      maxHeight: 'none !important',
-                      minWidth: '100% !important',
-                      minHeight: '150px !important',
-                      borderRadius: '20px 20px 0 0 !important',
-                      overflow: 'hidden !important',
-                      display: 'flex !important',
-                      alignItems: 'center !important',
-                      justifyContent: 'center !important',
-                      marginBottom: '0 !important',
-                    },
-                    '& .grupo-imagen-small': {
-                      width: '100% !important',
-                      height: '100% !important',
-                      objectFit: 'cover !important',
-                      maxWidth: 'none !important',
-                      maxHeight: 'none !important',
-                      minWidth: '100% !important',
-                      minHeight: '100% !important',
-                    },
-                    // Título en la parte inferior con background colorPrimario
-                    '& .grupo-titulo-small': {
-                      background: `${colorPrimario}`,
-                      color: 'white!important',
-                      padding: '1px 1rem',
-                      fontSize: '0.9rem',
-                      fontWeight: '600',
-                      width: '100%',
-                      borderRadius: '0 0 20px 20px',
-                      position: 'absolute',
-                      bottom: '0',
-                      left: '0',
-                    }
-                  }
-                }}
-              >
-                {/* Renderizado condicional directo para mantener funcionalidad MUI */}
-                {this.state.isMobile ? (
-                  // Mobile/tablet: solo grupos desde índice 2
-                  config.grupos.slice(2).map((grupo, index) => (
-                    <Tab
-                      onClick={() => this.handleGrupoClick(grupo)}
-                      key={grupo.id || index}
-                      icon={
-                        <div className="grupo-secundario-card">
-                          <div className="grupo-imagen-container-small">
-                            <img 
-                              src={grupo.icono} 
-                              alt={grupo.titulo}
-                              className="grupo-imagen-small"
-                              onError={(e) => {
-                                e.target.src = '/static/placeholder-image.png';
-                              }}
-                            />
-                          </div>
-                          <div className="grupo-titulo-small">
-                            {grupo.titulo}
-                          </div>
-                        </div>
-                      }
-                    />
-                  ))
-                ) : (
-                  // Desktop: todos los grupos
-                  config.grupos.map((grupo, index) => (
-                    <Tab
-                     onClick={() => this.handleGrupoClick(grupo)}
-                     sx={{
-                  '& .MuiTabs-indicator': {
-                    backgroundColor: colorPrimario,
-                  },
-                  '& .MuiTab-root': {
-                    minWidth: 'auto',
-                    padding: '8px 12px',
-                    opacity: 1,
-                    '&:hover': {
-                      opacity: 1,
-                    },
-                    '&.Mui-selected': {
-                      opacity: 1,
-                    },
-                    '&.Mui-focusVisible': {
-                      opacity: 1,
-                    },
-                    '& img': {
-                      opacity: 1,
-                      filter: 'none',
-                    },
-                    '& div': {
-                      opacity: 1,
-                    }
-                  },
-                  // Media queries para desktop - estilo grupo 1
-                  '@media (min-width: 769px)': {
-                    '& .MuiTab-root': {
-                      background: 'white',
-                      borderRadius: '20px',
-                      margin: '0 8px',
-                      padding: '20px 16px',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      overflow: 'hidden',
-                      position: 'relative',
-                      minHeight: 'auto',
-                      '&:hover': {
-                            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
-                      },
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: '-100%',
-                        width: '100%',
-                        height: '100%',
-                        background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                        transition: 'left 0.5s',
-                      },
-                      '&:hover::before': {
-                        left: '100%',
-                      }
-                    },
-                    '& .MuiTabs-indicator': {
-                      display: 'none',
-                    },
-                    '& .grupo-titulo-small': {
-                      color: `${colorPrimario}`,
-                    }
-                  }
-                }}
-                      key={grupo.id || index}
-                      icon={
-                        <div className="grupo-secundario-card">
-                          <div className="grupo-imagen-container-small">
-                            <img 
-                              src={grupo.icono} 
-                              alt={grupo.titulo}
-                              className="grupo-imagen-small"
-                              onError={(e) => {
-                                e.target.src = '/static/placeholder-image.png';
-                              }}
-                            />
-                          </div>
-                          <div className="grupo-titulo-small">
-                            {grupo.titulo}
-                          </div>
-                        </div>
-                      }
-                    />
-                  ))
-                )}
-              </Tabs>
-            </Box>
-          ) : (
-            <div className="grupos-secundarios-flex">
-              {config.grupos.slice(2).map((grupo, index) => (
-                <div key={grupo.id || index} className="grupo-secundario-card" onClick={() => this.handleGrupoClick(grupo)}>
-                  <div className="grupo-imagen-container-small">
-                    <img 
-                      src={grupo.icono} 
-                      alt={grupo.titulo}
-                      className="grupo-imagen-small"
-                      onError={(e) => {
-                        e.target.src = '/static/placeholder-image.png';
-                      }}
-                    />
-                  </div>
-                  <div className="grupo-titulo-small">
-                    {grupo.titulo}
-                  </div>
+      {/* Renderizado diferenciado por dispositivo */}
+      {this.state.isMobile ? (
+        // MOBILE/TABLET: Grupos principales + secundarios
+        <>
+          {/* Grupos Principales (Primeros 2) */}
+          <div className="grupos-principales">
+            {config.grupos && config.grupos.slice(0, 2).map((grupo, index) => (
+              <div key={grupo.id || index} className="grupo-principal-card" onClick={() => this.handleGrupoClick(grupo)}>
+                <div className="grupo-imagen-container">
+                  <img 
+                    src={grupo.icono} 
+                    alt={grupo.titulo}
+                    className="grupo-imagen"
+                    onError={(e) => {
+                      e.target.src = '/static/placeholder-image.png';
+                    }}
+                  />
                 </div>
-              ))}
+                <div className="grupo-titulo">
+                  {grupo.titulo}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Grupos Secundarios (Resto) */}
+          {config.grupos && config.grupos.length > 2 && (
+            <div className="grupos-secundarios">
+              {config.grupos.slice(2).length > 3 ? (
+                <Box sx={{ 
+                  width: '100%',
+                  justifyContent: 'space-around',
+                  display: 'flex',
+                  '& .MuiTabs-root': {
+                    minHeight: '48px'
+                  },
+                  '& .MuiTabs-scrollButtons': {
+                    '&.Mui-disabled': {
+                      opacity: 0.3
+                    }
+                  }
+                }}>
+                  <Tabs
+                    variant="scrollable"
+                    scrollButtons={true}
+                    allowScrollButtonsMobile={true}
+                    value={this.state.selectedTab}
+                    onChange={this.handleTabChange}
+                    aria-label="grupos secundarios"
+                    sx={{
+                      '& .MuiTabs-indicator': {
+                        backgroundColor: colorPrimario,
+                      },
+                      '& .MuiTab-root': {
+                        minWidth: 'auto',
+                        padding: '8px 12px',
+                        opacity: 1,
+                      },
+                    }}
+                  >
+                    {config.grupos.slice(2).map((grupo, index) => (
+                      <Tab
+                        onClick={() => this.handleGrupoClick(grupo)}
+                        key={grupo.id || index}
+                        icon={
+                          <div className="grupo-secundario-card">
+                            <div className="grupo-imagen-container-small">
+                              <img 
+                                src={grupo.icono} 
+                                alt={grupo.titulo}
+                                className="grupo-imagen-small"
+                                onError={(e) => {
+                                  e.target.src = '/static/placeholder-image.png';
+                                }}
+                              />
+                            </div>
+                            <div className="grupo-titulo-small">
+                              {grupo.titulo}
+                            </div>
+                          </div>
+                        }
+                      />
+                    ))}
+                  </Tabs>
+                </Box>
+              ) : (
+                <div className="grupos-secundarios-flex">
+                  {config.grupos.slice(2).map((grupo, index) => (
+                    <div key={grupo.id || index} className="grupo-secundario-card" onClick={() => this.handleGrupoClick(grupo)}>
+                      <div className="grupo-imagen-container-small">
+                        <img 
+                          src={grupo.icono} 
+                          alt={grupo.titulo}
+                          className="grupo-imagen-small"
+                          onError={(e) => {
+                            e.target.src = '/static/placeholder-image.png';
+                          }}
+                        />
+                      </div>
+                      <div className="grupo-titulo-small">
+                        {grupo.titulo}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )
-        )}
-      </div>
+          )}
+        </>
+      ) : (
+        // DESKTOP: Todos los grupos en Tabs (solo si hay suficientes para scrolear)
+        config.grupos && config.grupos.length > 0 && (
+          config.grupos.length > 4 ? (
+          <Box sx={{ 
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            '& .MuiTabs-root': {
+              minHeight: '320px',
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'center'
+            },
+            '& .MuiTabs-scroller': {
+              overflow: 'auto !important',
+            },
+            '& .MuiTabs-flexContainer': {
+              justifyContent: 'flex-start',
+              gap: '1rem',
+              padding: '1rem 0',
+              marginLeft: '0 !important'
+            },
+            '& .MuiTabs-scrollButtons': {
+              '&.Mui-disabled': {
+                opacity: 0.3,
+                cursor: 'pointer !important'
+              },
+              width: 'auto',
+              minWidth: '48px'
+            }
+          }}>
+            <Tabs
+              variant="scrollable"
+              scrollButtons={true}
+              allowScrollButtonsMobile={false}
+              value={0}
+              onChange={null}
+              aria-label="todos los grupos"
+              sx={{
+                '& .MuiTabs-indicator': {
+                  display: 'none',
+                },
+                '& .MuiTab-root': {
+                  minWidth: '230px !important',
+                  maxWidth: '230px !important',
+                  width: '230px !important',
+                  height: '240px !important',
+                  padding: '0 !important',
+                  margin: '0 !important',
+                  borderRadius: '20px !important',
+                  background: 'white !important',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08) !important',
+                  overflow: 'hidden !important',
+                  display: 'flex !important',
+                  flexDirection: 'column !important',
+                  alignItems: 'stretch !important',
+                  justifyContent: 'flex-start !important',
+                  textAlign: 'center !important',
+                  cursor: 'pointer !important',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important',
+                  position: 'relative !important',
+                  flex: '0 0 auto !important',
+                  '&:hover': {
+                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15) !important',
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: '-100%',
+                    width: '100%',
+                    height: '100%',
+                    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                    transition: 'left 0.5s',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                  },
+                  '&:hover::before': {
+                    left: '100%',
+                  }
+                },
+              }}
+            >
+              {config.grupos.map((grupo, index) => (
+                <Tab
+                  onClick={() => this.handleGrupoClick(grupo)}
+                  key={grupo.id || index}
+                  disableRipple
+                  icon={
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        height: '210px', 
+                        overflow: 'hidden', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginBottom: 0,
+                        flexGrow: 1
+                      }}>
+                        <img 
+                          src={grupo.icono} 
+                          alt={grupo.titulo}
+                          style={{
+                            width: '90%',
+                            height: '90%',
+                            objectFit: 'contain',
+                            transition: 'transform 0.3s ease'
+                          }}
+                          onError={(e) => {
+                            e.target.src = '/static/placeholder-image.png';
+                          }}
+                        />
+                      </div>
+                      <div style={{
+                        background: colorPrimario,
+                        color: this.isColorLight(colorPrimario) ? '#000' : '#fff',
+                        padding: '0.8rem 1rem',
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        width: '100%',
+                        textTransform: 'capitalize',
+                        borderRadius: '0 0 20px 20px',
+                        marginTop: 'auto',
+                        textAlign: 'center',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto'
+                      }}>
+                        {grupo.titulo}
+                      </div>
+                    </div>
+                  }
+                />
+              ))}
+            </Tabs>
+          </Box>
+        ) : (
+          // DESKTOP: 4 o menos grupos - mostrar sin tabs
+          <div className="grupos-secundarios-flex">
+            {config.grupos.map((grupo, index) => (
+              <div key={grupo.id || index} className="grupo-secundario-card" onClick={() => this.handleGrupoClick(grupo)}>
+                <div className="grupo-imagen-container-small">
+                  <img 
+                    src={grupo.icono} 
+                    alt={grupo.titulo}
+                    className="grupo-imagen-small"
+                    onError={(e) => {
+                      e.target.src = '/static/placeholder-image.png';
+                    }}
+                  />
+                </div>
+                <div className="grupo-titulo-small">
+                  {grupo.titulo}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ))}
 
     </div>
 
+    {/* Vista de Categoría: contenedor elegante con transición (similar a grupo) */}
+    {(this.state.categoryViewOpen || this.state.categoryViewClosing) && (
+      <div className={`grupo-view-container ${this.state.categoryViewClosing ? 'grupo-view-exit' : 'grupo-view-animate'}`}>
+        <div className="grupo-view-header" style={{ borderColor: colorPrimario }}>
+          <div className="grupo-view-title">
+            <span className="pill" style={{ background: colorPrimario, color: this.isColorLight(colorPrimario) ? '#000' : '#fff' }}>
+              {this.state.activeCategory || 'Categoría'}
+            </span>
+            <small className="sub">Productos de la categoría</small>
+          </div>
+          <button className="grupo-view-close" onClick={this.handleCloseCategoryView}>
+            Cerrar
+          </button>
+        </div>
+
+        <div className="grupo-view-grid">
+          {(this.props.state?.shop?.products || [])
+            .filter(a => String(a?.Categoria?.nombreCat || '').toLowerCase() === String(this.state.activeCategory || '').toLowerCase())
+            .map((art, idx) => (
+              <div key={art._id || idx} className="grupo-view-card">
+                <ProductTabCard
+                  art={art}
+                  empresa={empresa}
+                  primaryColor={colorPrimario}
+                  priceTextColor={this.isColorLight(colorPrimario) ? '#000' : '#fff'}
+                  onAddToCart={(item) => this.handleCarritoTienda(item)}
+                />
+              </div>
+            ))}
+        </div>
+
+        {((this.props.state?.shop?.products || []).filter(a => String(a?.Categoria || '').toLowerCase() === String(this.state.activeCategory || '').toLowerCase()).length === 0) && (
+          <div className="grupo-view-empty">No hay artículos para esta categoría.</div>
+        )}
+      </div>
+    )}
+
     {/* Vista de Grupo: contenedor elegante con transición */}
-    {this.state.groupViewOpen && (
-      <div className="grupo-view-container grupo-view-animate">
+    {!this.state.categoryViewOpen && !this.state.categoryViewClosing && (this.state.groupViewOpen || this.state.groupViewClosing) && (
+      <div className={`grupo-view-container ${this.state.groupViewClosing ? 'grupo-view-exit' : 'grupo-view-animate'}`}>
         <div className="grupo-view-header" style={{ borderColor: colorPrimario }}>
           <div className="grupo-view-title">
             <span className="pill" style={{ background: colorPrimario, color: this.isColorLight(colorPrimario) ? '#000' : '#fff' }}>
@@ -632,7 +896,7 @@ class TiendaEmpresa extends React.Component {
 
         <div className="grupo-view-grid">
           {(this.props.state?.shop?.products || [])
-            .filter(a => (a?.Grupo || '').toLowerCase() === (this.state.activeGrupo || '').toLowerCase())
+            .filter(a => String(a?.Grupo || '').toLowerCase() === String(this.state.activeGrupo || '').toLowerCase())
             .map((art, idx) => (
               <div key={art._id || idx} className="grupo-view-card">
                 <ProductTabCard
@@ -646,18 +910,18 @@ class TiendaEmpresa extends React.Component {
             ))}
         </div>
 
-        {((this.props.state?.shop?.products || []).filter(a => (a?.Grupo || '').toLowerCase() === (this.state.activeGrupo || '').toLowerCase()).length === 0) && (
+        {((this.props.state?.shop?.products || []).filter(a => String(a?.Grupo || '').toLowerCase() === String(this.state.activeGrupo || '').toLowerCase()).length === 0) && (
           <div className="grupo-view-empty">No hay artículos para este grupo.</div>
         )}
       </div>
     )}
 
-        {/* Sección de Categorías y Productos - SOLO categorías con artículos (oculta en vista de grupo) */}
-        {!this.state.groupViewOpen && Array.isArray(config.categoriasPrincipales) && config.categoriasPrincipales.some(cat => Array.isArray(cat.articulos) && cat.articulos.length > 0) && (
+        {/* Sección de Categorías y Productos - SOLO categorías con artículos (oculta en vista de grupo o categoría) */}
+        {!this.state.groupViewOpen && !this.state.groupViewClosing && !this.state.categoryViewOpen && !this.state.categoryViewClosing && Array.isArray(config.categoriasPrincipales) && config.categoriasPrincipales.some(cat => Array.isArray(cat.articulos) && cat.articulos.length > 0) && (
           <div className="categorias-productos-container">
             {config.categoriasPrincipales.filter(cat => Array.isArray(cat.articulos) && cat.articulos.length > 0).map((cat, idx) => (
               <div className="categoria-card" key={cat._id}>
-                <div className="categoria-header">
+                <div className="categoria-header" onClick={() => this.handleCategoriaClick(cat)}>
                   {cat.urlIcono && (
                     <img
                       src={cat.urlIcono}
@@ -666,7 +930,7 @@ class TiendaEmpresa extends React.Component {
                       onError={e => { e.target.src = '/static/placeholder-image.png'; }}
                     />
                   )}
-                  <span className="categoria-nombre">{cat.nombreCat}</span>
+                  <span className="categoria-nombre categoria-filtro-btn">{cat.nombreCat}</span>
                 </div>
                 <Box sx={{ width: '100%', paddingTop: "10px" }}>
                   <Tabs
@@ -736,10 +1000,14 @@ class TiendaEmpresa extends React.Component {
 
         </div>
         {this.state.showCartPanel && (
-          <CartPanel 
-            key={(this.props.state.shop.cart || []).map(p=>p._id).join('-') + '-' + (this.props.state.shop.cart || []).length}
-            getoff={this.handleHideCartPanel}
-          />
+          <CartPanel getoff={this.handleHideCartPanel} />
+        )}
+
+        {this.state.loadingtienda && (
+          <div className="tienda-loading-overlay">
+            <div className="tienda-loading-spinner" style={{ borderTopColor: colorPrimario }} />
+            <div className="tienda-loading-text">Actualizando tienda...</div>
+          </div>
         )}
 
         <Snackbar
@@ -790,6 +1058,27 @@ class TiendaEmpresa extends React.Component {
             font-weight: 600;
             color: #222;
             text-transform: capitalize;
+          }
+          .categoria-filtro-btn {
+            background: #f0f4f8;
+            padding: 0.4rem 1.2rem;
+            border-radius: 999px;
+            border: 1.5px solid #dde3e9;
+            transition: all 0.18s ease;
+            cursor: pointer;
+            user-select: none;
+          }
+          .categoria-filtro-btn:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+          }
+          .categoria-filtro-btn:active {
+            transform: translateY(0px);
+          }
+          .categoria-header {
+            cursor: pointer;
           }
           .productos-scroll {
             display: flex;
@@ -923,6 +1212,16 @@ class TiendaEmpresa extends React.Component {
             opacity: 1 !important;
           }
           
+          :global(.MuiTabs-scrollButtons) {
+            cursor: pointer !important;
+            opacity: 1 !important;
+          }
+          
+          :global(.MuiTabs-scrollButtons.Mui-disabled) {
+            opacity: 0.3 !important;
+            cursor: not-allowed !important;
+          }
+          
           .tienda-empresa-container {
             min-height: 80vh;
             padding: 2rem 0;
@@ -995,9 +1294,14 @@ class TiendaEmpresa extends React.Component {
             overflow: hidden;
           }
           .grupo-view-animate { animation: fadeUp 340ms cubic-bezier(.25,.8,.25,1); }
+          .grupo-view-exit { animation: fadeDown 340ms cubic-bezier(.25,.8,.25,1) forwards; }
           @keyframes fadeUp {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes fadeDown {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(8px); }
           }
           .grupo-view-header {
             display: flex;
@@ -1092,6 +1396,57 @@ class TiendaEmpresa extends React.Component {
   transform: scale(1.1);
 }
 
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.icon-button.loading-refresh :global(svg) {
+  animation: spinRefresh 0.9s linear infinite;
+}
+
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Overlay bloqueador mientras se carga la tienda */
+.tienda-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  animation: fadeOverlay 0.25s ease;
+}
+
+@keyframes fadeOverlay {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tienda-loading-spinner {
+  width: 56px;
+  height: 56px;
+  border: 5px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spinRefresh 0.9s linear infinite;
+}
+
+.tienda-loading-text {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
 /* Carrito */
 .cart-button {
   position: relative;
@@ -1120,7 +1475,8 @@ class TiendaEmpresa extends React.Component {
   align-items: center;
   background: white;
   border-radius: 50px;
-  overflow: hidden;
+  overflow: visible; /* permitir que el dropdown se vea */
+  position: relative; /* contexto para el contenedor de sugerencias */
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -1145,6 +1501,43 @@ class TiendaEmpresa extends React.Component {
 
 .search-button:hover {
   background: rgba(255, 0, 76, 0.1);
+}
+
+/* Estilos básicos para react-autosuggest (evitar que quede oculto) */
+:global(.react-autosuggest__container) {
+  position: relative;
+  flex: 1;
+}
+:global(.react-autosuggest__input) {
+  width: 100%;
+  border: none;
+  outline: none;
+  padding: 0.8rem 1.2rem;
+  font-size: 0.95rem;
+  color: #444;
+}
+:global(.react-autosuggest__suggestions-container) {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+:global(.react-autosuggest__suggestions-list) {
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+}
+:global(.react-autosuggest__suggestion) {
+  padding: 10px 14px;
+  cursor: pointer;
+}
+:global(.react-autosuggest__suggestion--highlighted) {
+  background: rgba(0,0,0,0.04);
 }
 
 /* Modo responsivo */
@@ -1174,7 +1567,9 @@ class TiendaEmpresa extends React.Component {
   background: #f8f9fa;
   display: flex;
   flex-direction: column;
- 
+
+  overflow: hidden; 
+  width: 100%;
 }
 
 /* Grupos Principales (Primeros 2) */
@@ -1185,25 +1580,27 @@ class TiendaEmpresa extends React.Component {
 }
 
 .grupo-principal-card {
-  background: white;
-  border-radius: 20px;
-  padding: 0; /* Eliminado padding para imagen más grande */
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.10), 0 4px 16px rgba(15, 23, 42, 0.06);
   flex: 1;
   max-width: 200px;
   position: relative;
   overflow: hidden;
+  border: 2px solid #f0f4f8;
 }
 
 .grupo-principal-card:hover {
-  
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 12px 24px rgba(29, 78, 216, 0.08);
+  border-color: #dbeafe;
+  transform: translateY(-2px);
 }
 
 .grupo-principal-card::before {
@@ -1213,7 +1610,7 @@ class TiendaEmpresa extends React.Component {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.1), transparent);
   transition: left 0.5s;
 }
 
@@ -1237,34 +1634,36 @@ class TiendaEmpresa extends React.Component {
 }
 
 .grupo-secundario-card {
-  background: white;
-  border-radius: 15px;
+  background: #ffffff;
+  border-radius: 12px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.10);
+  border: 2px solid #f0f4f8;
   min-width: 80px;
   max-width: 150px;
   width: 30%;
 }
 
 .grupo-secundario-card:hover {
-
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 12px 24px rgba(56, 189, 248, 0.08);
+  border-color: #38bdf8;
+  transform: translateY(-2px);
 }
 
 /* Contenedores de imagen */
 .grupo-imagen-container {
   width: 100%; /* Imagen más grande, ocupa todo el ancho */
-  height: 150px; /* Altura fija más grande */
+  min-height: 150px; /* Altura fija más grande */
   border-radius: 20px 20px 0 0; /* Solo redondear arriba */
   overflow: hidden;
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Alinear al inicio para que quede pegado al título */
   justify-content: center;
   margin-bottom: 0; /* Sin margen, pegado al título */
   transition: transform 0.3s ease;
@@ -1324,40 +1723,44 @@ class TiendaEmpresa extends React.Component {
 
 /* Títulos */
 .grupo-titulo {
-  background: ${colorPrimario}; /* Background del color primario */
-  color: white; /* Texto blanco para contraste */
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  color: #1d4ed8;
   margin: 0;
-  padding: 1px 1rem; /* Padding interno del título */
-  font-size: 1rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: Inter, system-ui, sans-serif;
+  transition: all 0.18s ease;
   line-height: 1.3;
   text-transform: capitalize;
-  width: 100%; /* Ocupa todo el ancho */
-  border-radius: 0 0 20px 20px; /* Solo redondear abajo */
-  position: absolute; /* Posición absoluta */
-  bottom: 0; /* Pegado al fondo */
+  width: 100%;
+  border-radius: 0 0 16px 16px;
+  position: absolute;
+  bottom: 0;
   left: 0;
+  border-top: 1px solid #e0e7ef;
 }
 
 .grupo-titulo-small {
-  color: #2c3e50;
+  color: #334155;
   margin: 0;
   font-size: 0.85rem;
-  font-weight: 500;
-  transition: color 0.3s ease;
+  font-weight: 600;
+  font-family: Inter, system-ui, sans-serif;
+  transition: all 0.18s ease;
   line-height: 1.2;
   text-transform: capitalize;
 }
 
 .grupo-principal-card:hover .grupo-titulo {
-  background: ${colorPrimario};
-  color: white;
-  transform: scale(1.02); /* Ligero efecto de escala en hover */
+  background: linear-gradient(135deg, #38bdf8 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.2);
 }
 
 .grupo-secundario-card:hover .grupo-titulo-small {
-  color: ${colorPrimario};
+  color: #1d4ed8;
+  font-weight: 700;
 }
 
 /* Responsive */
@@ -1418,14 +1821,19 @@ class TiendaEmpresa extends React.Component {
 }
 
 @media (min-width: 769px) {
-  /* En desktop: Ocultar grupos principales y mostrar solo grupo 2 con todos los grupos */
+  /* En desktop */
   .grupos-container {
     flex-direction: column;
     gap: 0;
-    align-items: center;
-    justify-content: center;
-    padding:  1rem;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 1rem;
     scroll-behavior: smooth;
+  overflow: visible;
+    height: 300px;
+    width: 100%;
+    max-width: 100%;
+    
   }
   
   .grupos-principales {
@@ -1433,16 +1841,11 @@ class TiendaEmpresa extends React.Component {
   }
   
   .grupos-secundarios {
-    width: 100%;
-    display: flex;
-    justify-content: center;
+    display: none; /* Oculto en desktop */
   }
   
   .grupos-secundarios-flex {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: nowrap;
-    overflow-x: visible;
+    /* Visible cuando hay 4 o menos grupos en desktop */
   }
   
   /* Visibilidad de tabs */
@@ -1452,76 +1855,6 @@ class TiendaEmpresa extends React.Component {
   
   .tabs-desktop-all {
     display: contents; /* Visible en desktop */
-  }
-  
-  /* Estilos para MUI Tabs en desktop - sin interferir con scroll */
-  
-  /* Todos los grupos del mismo tamaño más pequeño para que quepan */
-  .grupo-principal-card {
-    max-width: 120px;
-    min-width: 120px;
-    width: 120px;
-    padding: 0.8rem;
-    flex-shrink: 0;
-  }
-  
-  .grupo-secundario-card {
-    width: 100%;
-    min-width: 90%;
-   
-    padding: 0.8rem;
-    flex-shrink: 0;
-  }
-  
-  /* Imágenes del mismo tamaño más pequeñas */
-  .grupo-imagen-container {
-    width: 70px;
-    height: 70px;
-    max-width: 70px;
-    max-height: 70px;
-    min-width: 70px;
-    min-height: 70px;
-    margin-bottom: 0.8rem;
-  }
-  
-  .grupo-imagen-container-small {
-    width: 70px;
-    height: 70px;
-    max-width: 70px;
-    max-height: 70px;
-    min-width: 70px;
-    min-height: 70px;
-    margin-bottom: 0.8rem;
-  }
-  
-  /* Títulos del mismo tamaño */
-  .grupo-titulo {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  
-  .grupo-titulo-small {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  
-  /* Estilos para scroll horizontal */
-  .grupos-container::-webkit-scrollbar {
-    height: 8px;
-  }
-  
-  .grupos-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-  }
-  
-  .grupos-container::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 10px;
-  }
-  
-  .grupos-container::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
   }
 }
 
