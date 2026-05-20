@@ -251,7 +251,7 @@ const wb = new Workbox("sw.js", { scope: "/" });
     
            
             <PageTransition timeout={300} classNames="page-transition" >
-            <Component {...pageProps} key={router.route} />
+            <Component {...pageProps} key={router.asPath} />
             </PageTransition>
             
             <style jsx global>{`

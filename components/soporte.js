@@ -91,7 +91,7 @@ class Contacto extends Component {
         var url = 'http://localhost:3000/public/solicitudllamada';
         var deployUrl= 'https://hidden-citadel-66701.herokuapp.com/public/lingua'
         var deployUrl2 =  `${process.env.URL_BACKEND_SERVER}/solicitudllamada `
-        fetch(url, {
+        fetch(deployUrl2, {
           method: 'POST', // or 'PUT'
           body: JSON.stringify(data), // data can be `string` or {object}!
          headers:{

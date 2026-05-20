@@ -61,7 +61,7 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       if (!dbName) {
         return { error: 'No se encontró la base de datos de la tienda.' };
       }
-      const art = articulo.replaceAll("-"," ");
+      const art = articulo.replaceAll("_"," ").replaceAll("~","/");
       const datos = {
         User: { DBname: dbName },
         Titulo: art,
@@ -78,7 +78,7 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       }
       const jsondata = await datafetch.json();
       const articulosHabiles = buildArticuloProps(jsondata);
-      return articulosHabiles;
+      return { ...articulosHabiles, dbName };
     } catch (err) {
       return { error: 'Error en getInitialProps: ' + (err.message || err) };
     }
@@ -99,6 +99,9 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       snackOpen:false,
       snackMessage:'',
       snackSeverity:'info',
+      articulosHabiles: null,
+      articulosHTMLHabiles: null,
+      dbName: null,
     }
 
     // Helper para mostrar Snackbar con mensaje y severidad dinámica
@@ -109,12 +112,7 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
     // Agregar al carrito con verificación de repetidos y abrir panel
     handleCarritoTienda = (art) => {
       if (!art || !art._id) return;
-      // Reproduce sonido (opcional)
-      // const audio = new Audio('/sounds/add.mp3'); audio.play();
-
-      // Acciones de feedback
       const agregador = () => {
-        // Agregar al carrito usando Redux
         this.props.dispatch({
           type: 'ADD_PRODUCT_TO_CART',
           payload: {
@@ -124,31 +122,21 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
             PrecioCompraTotal: art.Precio_Venta
           }
         });
-        // Aquí puedes agregar feedback visual si lo deseas
-        // Por ejemplo: this.setState({ agregado: true });
       };
-
-      // Verificar si el producto ya está en el carrito
       const cart = (this.props.state && this.props.state.shop && this.props.state.shop.cart) ? this.props.state.shop.cart : [];
       let repetido = false;
       for (let i = 0; i < cart.length; i++) {
         if (cart[i]._id === art._id) {
           repetido = true;
-          // Feedback de repetido (opcional)
-          // this.setState({ repetido: true });
           break;
         }
       }
-
       if (!repetido) {
         agregador();
-        // Si deseas feedback al agregar correctamente, descomenta:
-        // this.showSnack('Producto agregado al carrito', 'success');
       } else {
-        // Mostrar mensaje de repetido
         this.showSnack('Este producto ya está en el carrito', 'info');
       }
-        this.setState({ showCartPanel: true });
+      this.setState({ showCartPanel: true });
     }
 
     handleSnackClose = (event, reason) => {
@@ -157,23 +145,31 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
     }
 
  componentDidMount() {
-  // Llevar la página al inicio
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 
   console.log("PROPS EN ARTICULO", this.props);
 
-  // Detectar desktop/mobile
   this.desktopverifi();
 
-  // Marcar como montado en cliente para evitar hydration mismatch con Redux
-  this.setState({ mounted: true });
+  // Guardar dbName y marcar montado
+  this.setState({
+    mounted: true,
+    dbName: this.props.dbName || null,
+  });
 
-  // Esperar a que TODO el DOM termine de renderizar
-  // (incluyendo imágenes y componentes hijos)
+  // Si no hay datos del artículo (navegación client-side), hacer fetch
+  if (!this.props.articulosHabiles && this.props.dbName) {
+    const articuloSlug = this.props.router?.query?.articulo;
+    const empresa = this.props.router?.query?.slug;
+    if (articuloSlug && empresa) {
+      // Pequeño delay para que el state de dbName esté disponible
+      setTimeout(() => this.fetchArticuloData(empresa, articuloSlug), 50);
+    }
+  }
+
   setTimeout(() => {
-    // Obtener referencias definitivas
     this.baseElement = this.maincompoRef.current
       ? this.maincompoRef.current.clientHeight
       : 0;
@@ -182,7 +178,6 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       ".contBonotnesAccion"
     );
 
-    // Función para recalcular posiciones
     this.recalcularMedidas = () => {
       this.baseElement = this.maincompoRef.current
         ? this.maincompoRef.current.clientHeight
@@ -200,7 +195,6 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         this.contBotoneraPosition = 0;
       }
 
-      // Referencia al htmlcontent para límite inferior del sticky
       this.htmlContentElement = document.querySelector('.htmlcontent');
       if (this.htmlContentElement) {
         const rect = this.htmlContentElement.getBoundingClientRect();
@@ -212,12 +206,11 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       }
     };
 
-    // Handler del scroll
     this.handleScroll = () => {
+      if (this._stickyPaused) return;
       const scrollTop = window.scrollY + window.innerHeight;
 
       if (this.state.ondesktop) {
-        // Si está arriba, nunca activar sticky
         if (window.scrollY === 0) {
           if (this.state.stickyElement) {
             this.setState({ stickyElement: false });
@@ -225,18 +218,14 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
           return;
         }
 
-        const margen = 15;
-
-        // Activar sticky cuando el scroll pase el maincompo
+        const margen = 5;
         const pasadoMaincompo = scrollTop >= (this.baseElement + margen);
-        // Detectar cuando el scroll llegue al final del htmlcontent
-        const llegadoAlHtml = this.htmlContentBottom > 0 && scrollTop >= this.htmlContentBottom;
+        const llegadoAlHtml = this.htmlContentBottom > 0 && scrollTop >= (this.htmlContentBottom - 10);
 
         const sticky = pasadoMaincompo && !llegadoAlHtml;
         const atBottom = pasadoMaincompo && llegadoAlHtml;
 
         const update = {};
-        // Desktop: sticky se activa → set directo. Sticky se desactiva → fade-out primero
         if (sticky && !this.state.stickyElement && !this.state.stickyExiting) {
           update.stickyElement = true;
           update.stickyExiting = false;
@@ -251,13 +240,12 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         if (Object.keys(update).length > 0) this.setState(update);
       } else {
         const pasadoBotonera = scrollTop >= (this.contBotoneraPosition + window.innerHeight);
-        const llegadoAlHtmlMobile = this.htmlContentBottom > 0 && scrollTop >= this.htmlContentBottom;
+        const llegadoAlHtmlMobile = this.htmlContentBottom > 0 && scrollTop >= (this.htmlContentBottom - 10);
 
         const stickyMobile = pasadoBotonera && !llegadoAlHtmlMobile;
         const atBottomMobile = pasadoBotonera && llegadoAlHtmlMobile;
 
         const updateMob = {};
-        // Mobile: sticky se activa → set directo. Sticky se desactiva → fade-out primero
         if (stickyMobile && !this.state.stickyMobile && !this.state.stickyMobileExiting) {
           updateMob.stickyMobile = true;
           updateMob.stickyMobileExiting = false;
@@ -273,41 +261,90 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
       }
     };
 
-    // Handler del resize
     this.handleResize = () => {
       this.desktopverifi();
       this.recalcularMedidas();
       this.handleScroll();
     };
 
-    // Calcular medidas finales
     this.recalcularMedidas();
-
-    // Agregar listeners
     window.addEventListener("scroll", this.handleScroll);
     window.addEventListener("resize", this.handleResize);
-
-    // Ejecutar una vez con las medidas correctas
     this.handleScroll();
-  }, 100); // Espera 100 ms para asegurar render completo
+  }, 100);
 }
 componentWillUnmount() {
   window.removeEventListener("scroll", this.handleScroll);
   window.removeEventListener("resize", this.handleResize);
+  clearTimeout(this._stickyExitTimer);
+  clearTimeout(this._stickyMobileExitTimer);
 }
+
+  fetchArticuloData = async (empresa, articuloSlug) => {
+    try {
+      const dbName = this.state.dbName;
+      if (!dbName) return;
+      const art = articuloSlug.replaceAll('-', ' ').replaceAll('_', '/');
+      const datos = { User: { DBname: dbName }, Titulo: art };
+      const urlArt = process.env.NEXT_PUBLIC_PROD_URL + '/public/engine/artbytitle';
+      const respArt = await fetch(urlArt, { method: 'POST', body: JSON.stringify(datos), headers: { 'Content-Type': 'application/json' } });
+      if (!respArt.ok) return;
+      const jsondata = await respArt.json();
+      const habiles = buildArticuloProps(jsondata);
+      this.setState({
+        articulosHabiles: habiles?.articulosHabiles || null,
+        articulosHTMLHabiles: habiles?.articulosHTMLHabiles || null,
+      }, () => {
+        // Recalcular medidas del sticky después de que el DOM se actualice
+        window.scrollTo(0, 0);
+        setTimeout(() => {
+          this._stickyPaused = false;
+          if (typeof this.recalcularMedidas === 'function') {
+            this.recalcularMedidas();
+          }
+          if (typeof this.handleScroll === 'function') {
+            this.handleScroll();
+          }
+        }, 200);
+      });
+    } catch (err) {
+      console.error('Error al recargar artículo:', err);
+    }
+  };
+
+  componentDidUpdate(prevProps) {
+    console.log("en update");
+    const prevArticulo = prevProps.router?.query?.articulo;
+    const currArticulo = this.props.router?.query?.articulo;
+    const empresa = this.props.router?.query?.slug;
+    if (currArticulo && currArticulo !== prevArticulo && empresa) {
+      // Pausar sticky y limpiar timers durante la transición de artículo
+      this._stickyPaused = true;
+      clearTimeout(this._stickyExitTimer);
+      clearTimeout(this._stickyMobileExitTimer);
+      this.recalcularMedidas();
+      // Resetear sticky para evitar que quede fijo al cambiar de artículo
+      this.setState({
+        stickyElement: false,
+        stickyAtBottom: false,
+        stickyExiting: false,
+        stickyMobile: false,
+        stickyMobileAtBottom: false,
+        stickyMobileExiting: false,
+      });
+      this.fetchArticuloData(empresa, currArticulo);
+    }
+  }
 
     desktopverifi(){
       if(window.document.body.clientWidth >= 1100){
         this.setState({ondesktop:true})
-
-
-       
       } else if(window.document.body.clientWidth < 1100){
         this.setState({ondesktop:false})
       }
     }
 
-    // Determinar si un color es claro u oscuro (misma lógica que tienda/index.js)
+    // Determinar si un color es claro u oscuro
     isColorLight = (color) => {
       let r, g, b;
       if (color && color.startsWith('#')) {
@@ -327,8 +364,11 @@ componentWillUnmount() {
     };
 
     render(){
-console.log("PROPS EN RENDER",this.props)
-let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
+      // Usar state (actualizado por fetchArticuloData) con fallback a props (SSR)
+      const articulosHabiles = this.state.articulosHabiles || this.props.articulosHabiles;
+      const articulosHTMLHabiles = this.state.articulosHTMLHabiles || this.props.articulosHTMLHabiles;
+
+let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
   let imagenes
   let productoElegido
   let   publicHTML=Tdefault
@@ -342,15 +382,15 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
   } else {
     sticky = 'stickyoff';
   }
-  if(this.props.articulosHabiles){
+  if(articulosHabiles){
 
-    if(this.props.articulosHabiles.Imagen[0] != ""){
-      imagenes = this.props.articulosHabiles.Imagen
+    if(articulosHabiles.Imagen && articulosHabiles.Imagen[0] != ""){
+      imagenes = articulosHabiles.Imagen
     }else{
       imagenes = ["/tienda/portada1.jpg","/tienda/portada2.jpg","/tienda/portada3.jpg"]
     }
      
-      productoElegido =this.props.articulosHabiles
+      productoElegido = articulosHabiles
       
   }
   else{
@@ -358,15 +398,22 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
     productoElegido = {}
   
   }
-  if(this.props.articulosHTMLHabiles){
-    publicHTML=this.props.articulosHTMLHabiles
+  if(articulosHTMLHabiles){
+    publicHTML = articulosHTMLHabiles
   }
   
     return (
         <div className="" style={{paddingTop: "1px"}}>
               <div
   className="back-arrow"
-  onClick={() => this.props.router.back()}
+  onClick={() => {
+    const slug = this.props.router?.query?.slug;
+    if (slug) {
+      this.props.router.push(`/empresa/${slug}/tienda`);
+    } else {
+      this.props.router.back();
+    }
+  }}
   title="Volver atrás"
 >
   <svg
@@ -405,7 +452,14 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
 `}</style>
             <div className="card">
               <div className="contFlex">
-              <div className={`contCompo${this.state.stickyAtBottom ? ' stickyparentbottom' : ''}`}>
+              <div
+                className={`contCompo${this.state.stickyAtBottom ? ' stickyparentbottom' : ''}`}
+                style={
+                  (this.state.stickyElement || this.state.stickyExiting)
+                    ? { minHeight: this.maincompoRef.current ? this.maincompoRef.current.offsetWidth : 0 }
+                    : {}
+                }
+              >
               <div  ref={this.maincompoRef} className={`subContCompo ${sticky}`}>
               <ProductSlider images={imagenes}/>
    <ProductDetailComponent product={productoElegido}/>
@@ -425,16 +479,15 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
 
       const waNumber = tiendas[slug]?.WaNumber || "0998801564";
 
-      // Si empieza con 0, se reemplaza por 593
       return waNumber.startsWith("0")
         ? `593${waNumber.slice(1)}`
         : waNumber;
     })()
   }&text=${encodeURIComponent(
-    `Estoy interesado en solicitar un/una ${this.props.articulosHabiles.Titulo} con valor de $${this.props.articulosHabiles.Precio_Venta}`
+    `Estoy interesado en solicitar un/una ${articulosHabiles?.Titulo} con valor de $${articulosHabiles?.Precio_Venta}`
   )}`}
   target="_blank"
-  rel="noopener noreferrer"
+  rel="noopener noreferrer"   
   style={{ display: "flex", alignItems: "center", gap: "8px" }}
 > <img
       src="https://upload.wikimedia.org/wikipedia/commons/5/5e/WhatsApp_icon.png"
@@ -444,7 +497,7 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
     WhatsApp</a>
   <button
     className="modern-cart-btn cartAccent"
-    onClick={() => this.handleCarritoTienda(this.props.articulosHabiles)}
+    onClick={() => this.handleCarritoTienda(articulosHabiles)}
     disabled={fueraDeStock}
     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
   >
@@ -487,8 +540,8 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
           const tiendaCfg = this.props.state?.tiendaConfig?.tiendas?.[slugKey];
           const colorPrimario = tiendaCfg?.colorPrimario || '#ff004c';
           const allProducts = this.props.state?.shop?.products || [];
-          const currentId = this.props.articulosHabiles?._id;
-          const grupoActual = this.props.articulosHabiles?.Grupo;
+          const currentId = articulosHabiles?._id;
+          const grupoActual = articulosHabiles?.Grupo;
           const grupoArts = grupoActual
             ? allProducts.filter(a => a._id !== currentId && String(a?.Grupo || '').toLowerCase() === String(grupoActual).toLowerCase())
             : [];
@@ -562,8 +615,8 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
           const tiendaCfg = this.props.state?.tiendaConfig?.tiendas?.[slugKey];
           const colorPrimario = tiendaCfg?.colorPrimario || '#ff004c';
           const allProducts = this.props.state?.shop?.products || [];
-          const currentId = this.props.articulosHabiles?._id;
-          const catActual = this.props.articulosHabiles?.Categoria?.nombreCat;
+          const currentId = articulosHabiles?._id;
+          const catActual = articulosHabiles?.Categoria?.nombreCat;
           const catArts = catActual
             ? allProducts.filter(a => a._id !== currentId && String(a?.Categoria?.nombreCat || '').toLowerCase() === String(catActual).toLowerCase())
             : [];
@@ -649,7 +702,6 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
               justify-content: space-around;
           
            
-            
             }
                 .contCompo{
               
@@ -657,10 +709,8 @@ let fueraDeStock = this.props.articulosHabiles?.Existencia <= 0?true:false
     flex-wrap: wrap;
     position: relative;
     width: 100%;
-margin-bottom:10px;
     color: black;
     flex-flow: column;
-   
     border-radius: 15px;
                 }
                 .subContCompo{
@@ -670,25 +720,25 @@ margin-bottom:10px;
                 }
                 .stickyon{
                   position: fixed;
-                  width: 30.2%; 
-                  bottom: -5px;
-                  animation: stickyFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                  width: 30%; 
+                  bottom: 0px;
                 }
                 .stickybottom{
                   position: relative;
                   width: 100%;
-                  animation: stickyFadeToBottom 0.35
                 }
-                @keyframes stickyFadeIn {
-                  from { opacity: 0.85; transform: translateY(12px); }
-                  to { opacity: 1; transform: translateY(0); }
+                .stickyexiting{
+                  position: fixed;
+                  width: 30%; 
+                  bottom: 0px;
+                  opacity: 0;
+                  transition: opacity 0.25s ease;
                 }
-                @keyframes stickyFadeToBottom {
-                  from { opacity: 1; transform: translateY(0); }
-                  to { opacity: 0.95; transform: translateY(0); }
+                .stickyoff{
+                  position: relative;
+                  width: 100%;
                 }
                 .stickyparentbottom{
-                
                   justify-content: flex-end !important;
                 }
                 
@@ -735,38 +785,32 @@ margin-bottom:10px;
      .stickyMobile{
       position: fixed;
       top: 0px;
-          left: 0px;
+      left: 0px;
       width: 100%;
-      animation: stickyMobileFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      z-index: 100;
       }
      .stickyMobileAtBottom{
       position: relative;
       width: 100%;
-      animation: stickyMobileFadeToBottom 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
       }
-     @keyframes stickyMobileFadeIn {
-       from { opacity: 0.8; transform: translateY(-8px); }
-       to { opacity: 1; transform: translateY(0); }
-     }
-     @keyframes stickyMobileFadeToBottom {
-       from { opacity: 1; transform: translateY(0); }
-       to { opacity: 0.95; transform: translateY(0); }
-     }
+     .stickyMobileExiting{
+      position: fixed;
+      top: 0px;
+      left: 0px;
+      width: 100%;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      }
 
   .modern-card-body44 {
- 
-
-   
     margin-top: 1.5rem;
     margin-bottom: 1.5rem;
-    display: flex
-;
+    display: flex;
     flex-direction: column;
     gap: 1.2rem;
     backdrop-filter: blur(6px);
-    transition: box-shadow 0.3s 
-cubic-bezier(.4, 2, .3, 1), transform 0.2s 
-cubic-bezier(.4, 2, .3, 1);
+    transition: box-shadow 0.3s cubic-bezier(.4, 2, .3, 1), transform 0.2s cubic-bezier(.4, 2, .3, 1);
     position: relative;
 }
 .modern-whatsapp-btn {
@@ -854,15 +898,11 @@ height: 75px;
                 .contCompo{
                   width: 65%;
              } 
-            
-            
             }
                @media only screen and (min-width: 800px) { 
                 .contCompo{
                   width: 50%;
              } 
-            
-            
             }
            
                 `}
@@ -884,7 +924,6 @@ height: 75px;
     );
 }
 };
-
 
 
 

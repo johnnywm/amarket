@@ -2,6 +2,7 @@ import React from 'react';
 import { withRouter } from 'next/router';
 import { connect } from 'react-redux';
 import Head from 'next/head';
+import postal from 'postal';
 import { DEFAULT_SEO } from '../../../../config';
 import { config } from 'react-transition-group';
 // Material UI Icons v5
@@ -21,6 +22,7 @@ import Autosuggest from '../../../../components/suggesters/jwsuggest-tienda';
 // Material UI Tabs
 import { Tabs, Tab, Box } from '@mui/material';
 import ProductTabCard from '../../../../components/reusable/ProductTabCard';
+import SlateFooter from '../../../../components/reusable/SlateFooter';
 import { setTiendaConfig, clearTiendaConfig } from '../../../../reduxstore/actions/tiendaConfig';
 import { loadFromLocalStorage } from '../../../_app';
 import dynamic from 'next/dynamic';
@@ -31,6 +33,7 @@ class TiendaEmpresa extends React.Component {
     empresa: '',
     productos: [],
     loading: true,
+    carrito: [],
     error: null,
     mounted: false,
     valor:"",
@@ -392,11 +395,12 @@ class TiendaEmpresa extends React.Component {
 
   handleCarritoTienda = (art) => {
     // Reproduce sonido
-   
+ 
     // Acciones de feedback
     const agregador = () => {
      
       // Agregar al carrito usando Redux
+        
       this.props.dispatch({
         type: 'ADD_PRODUCT_TO_CART',
         payload: {
@@ -422,6 +426,8 @@ class TiendaEmpresa extends React.Component {
     }
     if (!repetido) {
       agregador();
+
+      this.setState({ carrito: [...cart, { ...art, CantidadCompra: 1, PrecioVendido: art.Precio_Venta, PrecioCompraTotal: art.Precio_Venta }] });
       // Ejemplo: feedback opcional al agregar
       // this.showSnack('Producto agregado al carrito', 'success');
     } else {
@@ -524,7 +530,7 @@ class TiendaEmpresa extends React.Component {
         
         <div className="search-header-top">
        
-         <img style={{maxWidth:"250px"}} src={this.state.config.logoTiendaPreview} alt={this.state.config.nombreTienda} />
+         <img className='imgHeader'  src={this.state.config.logoTiendaPreview} alt={this.state.config.nombreTienda} />
       
           <div className="search-header-icons">
              <button
@@ -537,15 +543,13 @@ class TiendaEmpresa extends React.Component {
             </button>
             
            
-            <button className="icon-button cart-button" onClick={this.handleShowCartPanel}>
+            <button className="icon-button cart-button" onClick={() => this.setState({ carrito: [...this.state.carrito, "asd"] })}>
               <ShoppingCartIcon />
               <span className="cart-badge">{(this.props.state?.shop?.cart || []).length}</span>
             </button>
           </div>
         </div>
-<div id="padre" style={{display:"flex", justifyContent:"flex-end"}} >
-             
-                </div>
+
         <div className="search-header-input-wrapper">
       
             <Autosuggest  
@@ -561,6 +565,9 @@ class TiendaEmpresa extends React.Component {
           <button className="search-button">
             <SearchIcon />
           </button>
+          <div id="padre" style={{display:"flex", height: '0px', justifyContent:"flex-end"}} >
+             
+                </div>
         </div>
       </div>
 
@@ -613,7 +620,7 @@ class TiendaEmpresa extends React.Component {
                 }}>
                   <Tabs
                     variant="scrollable"
-                    scrollButtons={true}
+                    scrollButtons={false}
                     allowScrollButtonsMobile={true}
                     value={this.state.selectedTab}
                     onChange={this.handleTabChange}
@@ -996,11 +1003,17 @@ class TiendaEmpresa extends React.Component {
           </div>
         )}
 
-
+        {/* ===== SlateFooter ===== */}
+        {mounted && (
+          <SlateFooter
+            config={this.state.config}
+            empresa={empresa}
+          />
+        )}
 
         </div>
         {this.state.showCartPanel && (
-          <CartPanel getoff={this.handleHideCartPanel} />
+          <CartPanel cartUpdate={this.state.carrito} getoff={this.handleHideCartPanel} />
         )}
 
         {this.state.loadingtienda && (
@@ -1023,6 +1036,8 @@ class TiendaEmpresa extends React.Component {
 
         <style jsx>{`
           /* --- CSS para la sección de categorías y productos --- */
+    
+        
           .categorias-productos-container {
             width: 100%;
           
@@ -1358,6 +1373,7 @@ class TiendaEmpresa extends React.Component {
   color: ${textColor};
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 1rem;
 }
 
@@ -1544,7 +1560,7 @@ class TiendaEmpresa extends React.Component {
 @media (min-width: 768px) {
   .search-header-container {
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
   }
 
@@ -1669,7 +1685,9 @@ class TiendaEmpresa extends React.Component {
   transition: transform 0.3s ease;
 
 }
-
+.imgHeader {
+max-width: 250px;
+}
 .grupo-imagen-container-small {
   width: 15vw;
   height: 15vw;
@@ -1698,8 +1716,8 @@ class TiendaEmpresa extends React.Component {
 /* Imágenes */
 .grupo-imagen {
   width: 85%; /* Imagen ocupa todo el contenedor */
-  height: 100%;
-  object-fit: cover;
+  height: 85%;
+  object-fit: contain;
   transition: transform 0.3s ease;
 }
 
@@ -1859,6 +1877,10 @@ class TiendaEmpresa extends React.Component {
 }
 
 @media (max-width: 480px) {
+
+.imgHeader {
+max-width: 180px;
+}
   .grupos-container {
     padding: 1rem 0.5rem;
     gap: 0.5rem;

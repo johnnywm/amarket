@@ -478,7 +478,7 @@ console.log(this.state)
  var lol = JSON.stringify(data)
 
 
-  fetch(url, {
+  fetch(urldeploy, {
     method: 'POST', // or 'PUT'
     body: lol, // data can be `string` or {object}!
     headers:{
@@ -2023,7 +2023,7 @@ this.setTimeout(() => {
           
      
      
-          <button className="botonventa  " onClick={()=>{ this.props.flechafun();  this.props.dispatch(resetCard()) }}>
+          <button className="botonventa  " onClick={()=>{ this.props.flechafun(); this.props.dispatch(resetCard()) }}>
           <a>Continuar</a>
           </button>
  
@@ -2055,7 +2055,7 @@ this.setTimeout(() => {
           
 
 
-           <style jsx>{`
+           <style >{`
 /* SlatePad — checkout / contacto */
 .maincontacto {
   --sp-primary: #1d4ed8;
@@ -2525,7 +2525,7 @@ margin-top:10px
     padding-top: 14px;
     padding-left: 8px;
     padding-right: 8px;
-    height: 220px;
+    height: 260px;
     word-break: break-word;
     cursor:pointer;
     transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
@@ -2596,11 +2596,11 @@ margin-top:10px
         
         .maincontacto{
           overflow: scroll;
-          z-index: 9999;
-         width: 100%;
-         height: 100%;
-         background-color: rgba(15, 23, 42, 0.55);
-         backdrop-filter: blur(4px);
+          z-index: 99999;
+         width: 100vw;
+         height: 100vh;
+         background-color: rgba(20, 5, 5, 0.86);
+         
          left: 0px;
          position: fixed;
          top: 0px;

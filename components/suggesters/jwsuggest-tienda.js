@@ -54,7 +54,7 @@ const Search = SearcherUpdate(props, value)
       return (
         <div >
    <Link href={href} >
-      <a  target="_self" rel="noopener noreferrer">
+      <a style={{textDecoration:"none"}} target="_self" rel="noopener noreferrer">
         <div className="suggestion-item" onClick={()=>{this.props.sendClick(title)}}>          <img
             className="suggestion-thumb"
             src={imgSrc}

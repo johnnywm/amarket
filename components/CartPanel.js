@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { connect } from 'react-redux';
 import { Tabs, Tab, Box, IconButton } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -77,11 +78,17 @@ class CartPanel extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    const prevLen = Array.isArray(prevProps.cart) ? prevProps.cart.length : 0;
-    const len = Array.isArray(this.props.cart) ? this.props.cart.length : 0;
-    if (prevLen > 0 && len === 0 && !this.state.closing) {
-      this.scheduleClosePanel();
-    }
+
+
+
+
+   if (prevProps.cartUpdate !== this.props.cartUpdate) {
+    console.log("Cart updated:", this.props.cartUpdate);
+     const cart = Array.isArray(this.props.cartUpdate) ? this.props.cartUpdate : [];
+     if (cart.length > 0 && this.state.collapsed) {
+       this.setState({ collapsed: false, entering: true });
+     }
+   }
   }
 
   finishClosePanel = () => {
@@ -141,15 +148,17 @@ class CartPanel extends React.Component {
     if (this.state.closing || !this.state.collapsed) return;
     if (e && e.target && e.target.closest && e.target.closest('.cart-panel-collapse-toggle')) return;
     clearTimeout(this._collapseTimer);
-    this.setState({ collapsed: false, collapsing: false });
+    this.setState({ collapsed: false, collapsing: false, entering: true });
   };
 
   handleToggleCollapse = (e) => {
     if (e && e.stopPropagation) e.stopPropagation();
     if (this.state.closing) return;
+    const wasCollapsed = this.state.collapsed;
     this.setState(prev => ({
       collapsed: !prev.collapsed,
       collapsing: !prev.collapsed,
+      entering: wasCollapsed ? true : prev.entering,
     }));
     if (!this.state.collapsed) {
       this._collapseTimer = setTimeout(() => {
@@ -188,7 +197,7 @@ class CartPanel extends React.Component {
  
     const totalProductos = cart.reduce((acc, item) => acc + (item.CantidadCompra || 1), 0);
     const totalValor = cart.reduce((acc, item) => acc + (item.Precio_Venta * (item.CantidadCompra || 1)), 0);
-    return (
+    const panel = (
       <div
         className={`cart-panel ${isMobile ? 'cart-panel-mobile' : 'cart-panel-desktop'}${this.state.closing ? ' cart-panel-closing' : ''}${collapsed ? ' collapsed' : ''}${collapsing ? ' cart-panel-collapsing' : ''}${this.state.entering ? ' cart-panel-enter' : ''}`}
         onAnimationEnd={this.handleAnimationEnd}
@@ -324,7 +333,7 @@ class CartPanel extends React.Component {
         )}
         </div>
         <Animate show={this.state.compra}>
-            <Compra flechafun ={ ()=>{this.setState({compra:false}); this.props.getoff(); }}/>
+            <Compra flechafun ={ ()=>{this.setState({compra:false}); }}/>
         </Animate>
         <style jsx>{`
           .cart-panel {
@@ -346,7 +355,7 @@ class CartPanel extends React.Component {
             border-bottom: 1px solid #e2e8f0;
           }
           .cart-panel.cart-panel-mobile.collapsed {
-            transform: translateY(calc(98% - var(--handle-h)));
+            transform: translateY(calc(100% - var(--handle-h)));
           }
           .cart-panel {
             position: fixed;
@@ -365,7 +374,11 @@ class CartPanel extends React.Component {
             width: 100vw;
             height: 200px;
             border-radius: 18px 18px 0 0;
-            box-shadow: 0 -2px 24px 0 rgba(0,0,0,0.18);
+         
+          }
+          .cart-panel-mobile.collapsed,
+          .cart-panel-mobile.cart-panel-collapsing {
+            transition: 0.4s;
           }
           .cart-panel-desktop {
             top: 0;
@@ -884,6 +897,8 @@ class CartPanel extends React.Component {
         `}</style>
       </div>
     );
+
+    return typeof document !== 'undefined' ? createPortal(panel, document.body) : panel;
   }
 }
 
