@@ -236,7 +236,7 @@ registroFuncion=(e)=>{
     
  
   var url = 'https://iglass.herokuapp.com/users/register';
-  var urldeploy = `${process.env.URL_BACKEND_SERVER}/public/users/register`;
+  var urldeploy = `${process.env.NEXT_PUBLIC_PROD_URL}/public/users/register`;
   var data = {Usuario:this.state.usuarioReg,
               TelefonoContacto:this.state.telefonoReg,
               Correo:this.state.emailReg.toLowerCase(),
@@ -408,7 +408,7 @@ console.log(this.state)
 
 
   var url = 'http://localhost:3000/public/ordencompra';
-  let urldeploy = `${process.env.URL_BACKEND_SERVER}/public/ordencompra`;
+  let urldeploy = `${process.env.NEXT_PUBLIC_PROD_URL}/public/ordencompra`;
 
   var estadodepago = this.state.formadepago === "Tarjeta"?"Pagado":
                       this.state.formadepago === "Coins"?"Pagado": "default"
@@ -508,7 +508,7 @@ loginFuncion=(e)=>{
 
 
  
-  var urldeploy = `${process.env.URL_BACKEND_SERVER}/users/authenticateclient `
+  var urldeploy = `${process.env.NEXT_PUBLIC_PROD_URL}/public/users/authenticateclient `
   var data = {User:{DBname:process.env.EMARKET_DATA_BASE},
   Correo:this.state.correoLogin.toLowerCase(),
   Contrasena:this.state.passLogin.toLowerCase(),
