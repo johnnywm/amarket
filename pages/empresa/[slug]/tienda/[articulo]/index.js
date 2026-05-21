@@ -85,16 +85,13 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
   }
 
  maincompoRef = React.createRef();
+  htmlcompoRef = React.createRef();
 
     state={
       mounted:false,
-      ondesktop:false,
-      stickyElement:false,
-      stickyAtBottom:false,
+      stickyActive:false,
       stickyExiting:false,
-      stickyMobile:false,
-      stickyMobileAtBottom:false,
-      stickyMobileExiting:false,
+      stickyAtBottom:false,
       showCartPanel:false,
       snackOpen:false,
       snackMessage:'',
@@ -151,8 +148,6 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
 
   console.log("PROPS EN ARTICULO", this.props);
 
-  this.desktopverifi();
-
   // Guardar dbName y marcar montado
   this.setState({
     mounted: true,
@@ -164,105 +159,67 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
     const articuloSlug = this.props.router?.query?.articulo;
     const empresa = this.props.router?.query?.slug;
     if (articuloSlug && empresa) {
-      // Pequeño delay para que el state de dbName esté disponible
       setTimeout(() => this.fetchArticuloData(empresa, articuloSlug), 50);
     }
   }
 
-  setTimeout(() => {
-    this.baseElement = this.maincompoRef.current
-      ? this.maincompoRef.current.clientHeight
-      : 0;
-
-    this.contBotoneraElement = document.querySelector(
-      ".contBonotnesAccion"
-    );
-
+   setTimeout(() => {
     this.recalcularMedidas = () => {
-      this.baseElement = this.maincompoRef.current
+      this.maincompoHeight = this.maincompoRef.current
         ? this.maincompoRef.current.clientHeight
         : 0;
-
-      this.contBotoneraElement = document.querySelector(
-        ".contBonotnesAccion"
-      );
-
-      if (this.contBotoneraElement) {
-        this.contBotoneraPosition =
-          this.contBotoneraElement.getBoundingClientRect().top +
-          window.scrollY;
-      } else {
-        this.contBotoneraPosition = 0;
-      }
-
-      this.htmlContentElement = document.querySelector('.htmlcontent');
-      if (this.htmlContentElement) {
-        const rect = this.htmlContentElement.getBoundingClientRect();
-        this.htmlContentTop = rect.top + window.scrollY;
-        this.htmlContentBottom = rect.top + window.scrollY + rect.height;
-      } else {
-        this.htmlContentTop = 0;
-        this.htmlContentBottom = 0;
-      }
     };
 
     this.handleScroll = () => {
       if (this._stickyPaused) return;
-      const scrollTop = window.scrollY + window.innerHeight;
 
-      if (this.state.ondesktop) {
-        if (window.scrollY === 0) {
-          if (this.state.stickyElement) {
-            this.setState({ stickyElement: false });
-          }
-          return;
+      // Solo aplicar sticky en desktop (>= 1100px)
+      if (window.innerWidth < 1100) {
+        if (this.state.stickyActive || this.state.stickyAtBottom) {
+          this.setState({ stickyActive: false, stickyAtBottom: false });
         }
+        return;
+      }
 
-        const margen = 5;
-        const pasadoMaincompo = scrollTop >= (this.baseElement + margen);
-        const llegadoAlHtml = this.htmlContentBottom > 0 && scrollTop >= (this.htmlContentBottom - 10);
+      // Protección: no decidir si el maincompo no tiene altura (transición de artículo)
+      if (!this.maincompoHeight || this.maincompoHeight <= 0) return;
 
-        const sticky = pasadoMaincompo && !llegadoAlHtml;
-        const atBottom = pasadoMaincompo && llegadoAlHtml;
-
-        const update = {};
-        if (sticky && !this.state.stickyElement && !this.state.stickyExiting) {
-          update.stickyElement = true;
-          update.stickyExiting = false;
-        } else if (!sticky && this.state.stickyElement && !this.state.stickyExiting) {
-          update.stickyElement = false;
-          update.stickyExiting = true;
-          this._stickyExitTimer = setTimeout(() => {
-            this.setState({ stickyExiting: false });
-          }, 350);
+      const scrollBottom = window.scrollY + window.innerHeight;
+      // scrollHeight es el fin real del documento, siempre estable
+      
+      // Posición absoluta del final del .htmlcontent (offsetTop acumulado + altura)
+      const htmlEl = this.htmlcompoRef.current;
+      let htmlEnd = 0;
+      if (htmlEl) {
+        let ot = 0;
+        let el = htmlEl;
+        while (el) { ot += el.offsetTop; el = el.offsetParent; }
+        htmlEnd = ot + htmlEl.offsetHeight;
+      }
+      // Activar sticky cuando el fondo del viewport alcanza/pasa el fondo del maincompo + 29px
+      const pastMaincompo = scrollBottom >= this.maincompoHeight + 29;
+      // Desactivar sticky cuando el fondo del viewport alcanza el final del htmlcontent
+      const pastHtmlEnd = htmlEnd  > 0 && scrollBottom >= htmlEnd - 3;
+console.log("SCROLL:", scrollBottom, "MAINCOMPO:", this.maincompoHeight, "HTMLEND:", htmlEnd);
+      if (pastHtmlEnd) {
+        // Llegó al final del
+        if (!this.state.stickyAtBottom) {
+          this.setState({ stickyActive: false, stickyAtBottom: true });
         }
-        if (atBottom !== this.state.stickyAtBottom) update.stickyAtBottom = atBottom;
-        if (Object.keys(update).length > 0) this.setState(update);
+      } else if (pastMaincompo) {
+        // Zona media: sticky flotando
+        if (!this.state.stickyActive) {
+          this.setState({ stickyActive: true, stickyAtBottom: false });
+        }
       } else {
-        const pasadoBotonera = scrollTop >= (this.contBotoneraPosition + window.innerHeight);
-        const llegadoAlHtmlMobile = this.htmlContentBottom > 0 && scrollTop >= (this.htmlContentBottom - 10);
-
-        const stickyMobile = pasadoBotonera && !llegadoAlHtmlMobile;
-        const atBottomMobile = pasadoBotonera && llegadoAlHtmlMobile;
-
-        const updateMob = {};
-        if (stickyMobile && !this.state.stickyMobile && !this.state.stickyMobileExiting) {
-          updateMob.stickyMobile = true;
-          updateMob.stickyMobileExiting = false;
-        } else if (!stickyMobile && this.state.stickyMobile && !this.state.stickyMobileExiting) {
-          updateMob.stickyMobile = false;
-          updateMob.stickyMobileExiting = true;
-          this._stickyMobileExitTimer = setTimeout(() => {
-            this.setState({ stickyMobileExiting: false });
-          }, 350);
+        // Scroll inicial / volviendo arriba: normal flow
+        if (this.state.stickyActive || this.state.stickyAtBottom) {
+          this.setState({ stickyActive: false, stickyAtBottom: false });
         }
-        if (atBottomMobile !== this.state.stickyMobileAtBottom) updateMob.stickyMobileAtBottom = atBottomMobile;
-        if (Object.keys(updateMob).length > 0) this.setState(updateMob);
       }
     };
 
     this.handleResize = () => {
-      this.desktopverifi();
       this.recalcularMedidas();
       this.handleScroll();
     };
@@ -276,8 +233,6 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
 componentWillUnmount() {
   window.removeEventListener("scroll", this.handleScroll);
   window.removeEventListener("resize", this.handleResize);
-  clearTimeout(this._stickyExitTimer);
-  clearTimeout(this._stickyMobileExitTimer);
 }
 
   fetchArticuloData = async (empresa, articuloSlug) => {
@@ -295,56 +250,46 @@ componentWillUnmount() {
         articulosHabiles: habiles?.articulosHabiles || null,
         articulosHTMLHabiles: habiles?.articulosHTMLHabiles || null,
       }, () => {
-        // Recalcular medidas del sticky después de que el DOM se actualice
-        window.scrollTo(0, 0);
-        setTimeout(() => {
-          this._stickyPaused = false;
-          if (typeof this.recalcularMedidas === 'function') {
-            this.recalcularMedidas();
-          }
-          if (typeof this.handleScroll === 'function') {
-            this.handleScroll();
-          }
-        }, 200);
+        // Doble rAF: el primero resetea scroll con altura real del DOM ya commiteado,
+        // el segundo mide post layout+paint del browser
+        requestAnimationFrame(() => {
+          window.scrollTo(0, 0);
+          requestAnimationFrame(() => {
+            this._stickyPaused = false;
+            if (typeof this.recalcularMedidas === 'function') {
+              this.recalcularMedidas();
+            }
+            if (typeof this.handleScroll === 'function') {
+              this.handleScroll();
+            }
+          });
+        });
       });
     } catch (err) {
       console.error('Error al recargar artículo:', err);
     }
   };
 
-  componentDidUpdate(prevProps) {
-    console.log("en update");
-    const prevArticulo = prevProps.router?.query?.articulo;
-    const currArticulo = this.props.router?.query?.articulo;
-    const empresa = this.props.router?.query?.slug;
-    if (currArticulo && currArticulo !== prevArticulo && empresa) {
-      // Pausar sticky y limpiar timers durante la transición de artículo
-      this._stickyPaused = true;
-      clearTimeout(this._stickyExitTimer);
-      clearTimeout(this._stickyMobileExitTimer);
-      this.recalcularMedidas();
-      // Resetear sticky para evitar que quede fijo al cambiar de artículo
-      this.setState({
-        stickyElement: false,
-        stickyAtBottom: false,
-        stickyExiting: false,
-        stickyMobile: false,
-        stickyMobileAtBottom: false,
-        stickyMobileExiting: false,
-      });
-      this.fetchArticuloData(empresa, currArticulo);
-    }
-  }
+   componentDidUpdate(prevProps) {
+     console.log("en update");
+    
+     const prevArticulo = prevProps.router?.query?.articulo;
+     const currArticulo = this.props.router?.query?.articulo;
+     const empresa = this.props.router?.query?.slug;
+     if (currArticulo && currArticulo !== prevArticulo && empresa) {
+       // Pausar sticky durante la transición de artículo
+       this._stickyPaused = true;
+       this.maincompoHeight = 0;
+       this.setState({
+         stickyActive: false,
+         stickyAtBottom: false,
+       });
+        
+       this.fetchArticuloData(empresa, currArticulo);
+     }
+   }
 
-    desktopverifi(){
-      if(window.document.body.clientWidth >= 1100){
-        this.setState({ondesktop:true})
-      } else if(window.document.body.clientWidth < 1100){
-        this.setState({ondesktop:false})
-      }
-    }
-
-    // Determinar si un color es claro u oscuro
+     // Determinar si un color es claro u oscuro
     isColorLight = (color) => {
       let r, g, b;
       if (color && color.startsWith('#')) {
@@ -372,16 +317,14 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
   let imagenes
   let productoElegido
   let   publicHTML=Tdefault
-  let sticky;
-  if (this.state.stickyAtBottom) {
-    sticky = 'stickybottom';
-  } else if (this.state.stickyExiting) {
-    sticky = 'stickyexiting';
-  } else if (this.state.stickyElement) {
-    sticky = 'stickyon';
-  } else {
-    sticky = 'stickyoff';
-  }
+   let sticky;
+   if (this.state.stickyAtBottom) {
+     sticky = 'stickybottom';
+   } else if (this.state.stickyActive) {
+     sticky = 'stickyon';
+   } else {
+     sticky = 'stickyoff';
+   }
   if(articulosHabiles){
 
     if(articulosHabiles.Imagen && articulosHabiles.Imagen[0] != ""){
@@ -450,21 +393,21 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
     font-weight: bold;
   }
 `}</style>
-            <div className="card">
-              <div className="contFlex">
-              <div
-                className={`contCompo${this.state.stickyAtBottom ? ' stickyparentbottom' : ''}`}
-                style={
-                  (this.state.stickyElement || this.state.stickyExiting)
-                    ? { minHeight: this.maincompoRef.current ? this.maincompoRef.current.offsetWidth : 0 }
-                    : {}
-                }
-              >
-              <div  ref={this.maincompoRef} className={`subContCompo ${sticky}`}>
-              <ProductSlider images={imagenes}/>
-   <ProductDetailComponent product={productoElegido}/>
-<div className={`contBonotnesAccion `}>
- <div className={`contB${this.state.stickyMobileExiting ? ' stickyMobileExiting' : ''}${this.state.stickyMobile ? ' stickyMobile' : ''}${this.state.stickyMobileAtBottom ? ' stickyMobileAtBottom' : ''}`}>
+             <div className="card">
+               <div className="contFlex">
+               <div
+                 className={`contCompo${this.state.stickyAtBottom ? ' stickyparentbottom' : ''}`}
+                 style={
+                   (this.state.stickyActive || this.state.stickyAtBottom)
+                     ? { minHeight: this.maincompoRef.current ? this.maincompoRef.current.offsetHeight : 0 }
+                     : {}
+                 }
+               >
+               <div  ref={this.maincompoRef} className={`subContCompo ${sticky}`}>
+               <ProductSlider images={imagenes}/>
+    <ProductDetailComponent product={productoElegido}/>
+ <div className="contBonotnesAccion">
+  <div className="contB">
  <Animate show={!fueraDeStock}>
                  <div className="modern-action-row" style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
   <a
@@ -527,7 +470,7 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
               </Alert>
             </Snackbar>
           
-            <div className='htmlcontent'   dangerouslySetInnerHTML={{ __html: publicHTML}}></div>
+<div ref={this.htmlcompoRef} className='htmlcontent'   dangerouslySetInnerHTML={{ __html: publicHTML}}></div>
         
             
             </div>
@@ -704,7 +647,7 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
            
             }
                 .contCompo{
-              
+                       
                     display: flex;
     flex-wrap: wrap;
     position: relative;
@@ -720,19 +663,13 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
                 }
                 .stickyon{
                   position: fixed;
-                  width: 30%; 
+                  width: 30.2%; 
                   bottom: 0px;
+                  
                 }
                 .stickybottom{
                   position: relative;
                   width: 100%;
-                }
-                .stickyexiting{
-                  position: fixed;
-                  width: 30%; 
-                  bottom: 0px;
-                  opacity: 0;
-                  transition: opacity 0.25s ease;
                 }
                 .stickyoff{
                   position: relative;
@@ -782,27 +719,6 @@ margin-bottom:10px;
     border-radius: 2rem;
      padding:  10px 5px
 }
-     .stickyMobile{
-      position: fixed;
-      top: 0px;
-      left: 0px;
-      width: 100%;
-      z-index: 100;
-      }
-     .stickyMobileAtBottom{
-      position: relative;
-      width: 100%;
-      }
-     .stickyMobileExiting{
-      position: fixed;
-      top: 0px;
-      left: 0px;
-      width: 100%;
-      z-index: 100;
-      opacity: 0;
-      transition: opacity 0.25s ease;
-      }
-
   .modern-card-body44 {
     margin-top: 1.5rem;
     margin-bottom: 1.5rem;
