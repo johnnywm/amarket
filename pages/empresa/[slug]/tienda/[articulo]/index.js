@@ -197,9 +197,9 @@ const CartPanel = dynamic(() => import('../../../../../components/CartPanel'), {
         htmlEnd = ot + htmlEl.offsetHeight;
       }
       // Activar sticky cuando el fondo del viewport alcanza/pasa el fondo del maincompo + 29px
-      const pastMaincompo = scrollBottom >= this.maincompoHeight + 29;
+      const pastMaincompo = scrollBottom >= this.maincompoHeight +30 ;
       // Desactivar sticky cuando el fondo del viewport alcanza el final del htmlcontent
-      const pastHtmlEnd = htmlEnd  > 0 && scrollBottom >= htmlEnd - 3;
+      const pastHtmlEnd = htmlEnd  > 0 && scrollBottom >= htmlEnd  ;
 console.log("SCROLL:", scrollBottom, "MAINCOMPO:", this.maincompoHeight, "HTMLEND:", htmlEnd);
       if (pastHtmlEnd) {
         // Llegó al final del
@@ -656,17 +656,73 @@ let fueraDeStock = articulosHabiles?.Existencia <= 0?true:false
     flex-flow: column;
     border-radius: 15px;
                 }
-                .subContCompo{
-                  width: 100%; 
-                  padding-bottom: 10px;
-                  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-                }
+              .subContCompo {
+  width: 100%;
+  padding-bottom: 10px;
+  box-sizing: border-box;
+  
+}
+  .subContCompo > .contenido {
+  transition:
+    transform 0.45s ease,
+    opacity 0.45s ease,
+    box-shadow 0.45s ease;
+  will-change: transform, opacity;
+}
+
+
                 .stickyon{
                   position: fixed;
                   width: 30.2%; 
                   bottom: 0px;
-                  
-                }
+                     transform: translateY(0);
+                opacity: 1;
+                  box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.04);
+
+  z-index: 1000;
+
+  transition:
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+ animation: stickyFadeIn 0.45s ease forwards;
+
+ 
+
+  z-index: 1000;
+}
+
+/* =========================================================
+   ANIMACIÓN DE ENTRADA
+   ========================================================= */
+@keyframes stickyFadeIn {
+  from {
+    transform: translateY(12px);
+    opacity: 0.96;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   ANIMACIÓN DE SALIDA
+   ========================================================= */
+.stickyon.removing {
+  animation: stickyFadeOut 0.35s ease forwards;
+}
+
+@keyframes stickyFadeOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(12px);
+    opacity: 0.96;
+  }
+}
                 .stickybottom{
                   position: relative;
                   width: 100%;
