@@ -50,7 +50,7 @@ const Search = SearcherUpdate(props, value)
       const imgSrc = (Array.isArray(suggestion?.Imagen) && suggestion.Imagen[0])
         ? suggestion.Imagen[0]
         : '/static/fblogo.png';
-      const href = `/empresa/${this.props.empresa}/tienda/${(suggestion.Titulo || '').replace(/ /g, '-')}`;
+      const href = `/empresa/${this.props.empresa}/tienda/${(suggestion.Titulo).replace(/ /g, '_').replace(/\//g, '~')}`;
       return (
         <div >
    <Link href={href} >
